@@ -208,10 +208,10 @@
 ## 10. แผนการสร้าง (Milestones)
 
 1. **`docs/spec.md`** — เอกสารนี้ ✅
-2. **โครง repo** — `frontend/` (React+Vite+PWA) และ `apps-script/` (backend .gs + คู่มือ deploy)
-3. **Backend (Apps Script)** — สร้าง Sheet template + tabs, auth/token, endpoints (รวม **ปรับแต้มมือ** และ **CRUD เด็ก/งาน/รางวัล/ช่วงเวลา**), สูตรแต้ม/สตรีค/เหรียญ, LockService, ส่งอีเมล
-4. **Frontend** — auth 2 โหมด, หน้าจอเด็ก, หน้าจอผู้ปกครอง, เรียก API, กล้อง/อัปโหลดรูป, responsive
-5. **คู่มือ setup** — สร้าง Sheet, deploy Apps Script Web App, ผูก URL, deploy frontend ฟรี
+2. **โครง repo** — `frontend/` (React+Vite+PWA) และ `apps-script/` (backend .gs + คู่มือ deploy) ✅
+3. **Backend (Apps Script)** — Sheet tabs, auth/token, endpoints (รวม **ปรับแต้มมือ** และ **CRUD เด็ก/งาน/รางวัล/ช่วงเวลา**), สูตรแต้ม/สตรีค/เหรียญ, LockService, ส่งอีเมล ✅
+4. **Frontend** — auth 2 โหมด, หน้าจอเด็ก, หน้าจอผู้ปกครอง, เรียก API, กล้อง/อัปโหลดรูป, responsive, PWA icons ✅
+5. **คู่มือ setup + deploy** — clasp (backend) + GitHub Actions (frontend/backend), deploy live แล้ว ✅
 
 ---
 
@@ -231,3 +231,37 @@
 - **โควตา Apps Script** (อีเมล/วัน, เวลา execution) มีลิมิต — ระดับครอบครัวเดียวเพียงพอสบายๆ
 - **รูปใน Drive** — ตั้ง sharing ให้ผู้ปกครองเปิดลิงก์ในอีเมลได้ แต่ไม่ public ทั้งอินเทอร์เน็ต
 - ยังไม่ทำ push / native app (เป็น PWA) — ขยายภายหลังได้
+
+---
+
+## 13. สถานะการพัฒนา (Progress) — อัปเดต 2026-07-23
+
+**พัฒนา + deploy ครบทั้งระบบแล้ว ใช้งานจริงได้** (backend + frontend + CI/CD)
+
+### ลิงก์/ค่าสำคัญ
+| รายการ | ค่า |
+|---|---|
+| เว็บแอป (frontend) | https://thaikorn.github.io/home-love/ |
+| Backend Web app | `.../macros/s/AKfycbz61UNIlEF5d6TsATMMF015UQuSaBFVn9_XTlPs4SXbOTvvfkl9Sskn-oDgnA9_fyfo0Q/exec` |
+| GitHub repo | https://github.com/thaikorn/home-love (public) |
+| Apps Script project id | `11GaTxY7fyNSk_XDNIsgg899JXJVcPJbdDE-5z9k_i0t7J7ibocAjXT4r` |
+| Google Sheet (DB) id | `1syFvYW4s5exaT1pI7tWf4PS29hLri9SQKsua_Bcbua8` |
+| ผู้ปกครองคนแรก | username `admin` (รหัสผ่านตั้งเองตอน bootstrap) |
+
+### CI/CD (GitHub Actions)
+- **Frontend:** push `frontend/**` → build+deploy GitHub Pages (secret `VITE_API_URL`)
+- **Backend:** push `apps-script/**.gs` → `clasp push`+`clasp deploy` คง URL เดิม (secrets `CLASPRC_JSON`, `CLASP_SCRIPT_ID`, `CLASP_DEPLOYMENT_ID`)
+- deploy backend มือ: `cd apps-script && npm run redeploy`
+
+### ✅ เสร็จแล้ว
+- Backend ครบทุก endpoint (auth, ส่ง/ตรวจงาน, แต้ม/สตรีค/เหรียญ, แลกของ, wish, ปรับแต้มมือ, CRUD), LockService, อีเมล, อัปโหลดรูป Drive
+- Frontend ครบทุกหน้าจอเด็ก/ผู้ปกครอง + PWA + ไอคอน
+- Deploy live + CI/CD ทั้งคู่ (ทดสอบ `ping`/`children` ผ่าน)
+
+### ⏭️ ยังไม่ได้ทำ / มาต่อวันหลัง
+- **ทดสอบ flow จริง end-to-end** ตามข้อ 11 (ยังไม่มีข้อมูลจริงในระบบ — ยังไม่ได้เพิ่มช่วงเวลา/งาน/เด็ก/รางวัล; จะลองด้วย `seedDemo()` ก็ได้)
+- ยืนยัน **อีเมลแจ้งเตือน** ส่งจริง (MailApp) เมื่อมีงาน/คำขอแลก/wish
+- ยืนยัน **อัปโหลดรูป Drive** + sharing ลิงก์เปิดดูได้จากแอป/อีเมล
+- ตรวจการคำนวณแต้มจริงให้ตรงสูตร (ตรงเวลา/สาย/ทีม/โบนัส) กับข้อมูลจริง
+- (เสริม) GitHub Actions deploy backend — ปรับ Node เวอร์ชันถ้ามี deprecation warning; พิจารณา rotate `CLASPRC_JSON`
+- (เสริม) ปรับแต่งดีไซน์/ฟีเจอร์เพิ่มตามใช้งานจริง
