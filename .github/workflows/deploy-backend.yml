@@ -39,7 +39,8 @@ jobs:
       - name: Write .clasp.json (scriptId)
         env:
           SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
-        run: printf '{ "scriptId": "%s", "rootDir": "." }' "$SCRIPT_ID" > .clasp.json
+        run: |
+          printf '{ "scriptId": "%s", "rootDir": "." }' "$SCRIPT_ID" > .clasp.json
 
       - name: Push code
         run: clasp push -f
