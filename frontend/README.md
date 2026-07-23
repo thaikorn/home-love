@@ -33,4 +33,4 @@ npm run build             # ได้ไฟล์ static ใน dist/
 | `src/screens/ParentSettings.jsx` | CRUD เด็ก/งาน/รางวัล/ช่วงเวลา |
 
 ## ไอคอน PWA
-ใส่ไฟล์ `public/icon-192.png` และ `public/icon-512.png` (โลโก้หัวใจสีชมพู) เพื่อให้ติดตั้งเป็นแอปได้สวยงาม — ระหว่างนี้มี `favicon.svg` ให้แล้ว
+มีไฟล์ `public/icon-192.png`, `public/icon-512.png` (หัวใจสีชมพู, ใช้เป็น maskable ด้วย) และ `public/favicon.svg` ให้แล้ว — ติดตั้งเป็นแอปได้สวยงาม
