@@ -18,11 +18,14 @@ frontend/           React + Vite + PWA (ผู้ใช้เด็ก/ผู้
    (deploy อัตโนมัติด้วย clasp: `cd apps-script && npm install && npm run login && npm run create && npm run redeploy`)
 2. ตั้งค่า frontend ตาม [`frontend/README.md`](frontend/README.md) → ใส่ URL ใน `.env` แล้ว deploy
 
-## Deploy อัตโนมัติ
-- **Backend:** clasp (`apps-script/package.json` scripts) — `npm run redeploy` คง Web app URL เดิม
-- **Frontend:** GitHub Actions (`.github/workflows/deploy-frontend.yml`) build + deploy ขึ้น **GitHub Pages** อัตโนมัติเมื่อ push `frontend/**`
-  - ตั้ง repo secret **`VITE_API_URL`** = Web app URL ก่อน (Settings → Secrets and variables → Actions)
-  - เปิด Pages: Settings → Pages → Source = **GitHub Actions**
+## Deploy อัตโนมัติ (GitHub Actions)
+- **Frontend** (`.github/workflows/deploy-frontend.yml`) — push `frontend/**` → build + deploy ขึ้น **GitHub Pages**
+  - repo secret: **`VITE_API_URL`** = Web app URL
+- **Backend** (`.github/workflows/deploy-backend.yml`) — push `apps-script/**.gs` → `clasp push` + `clasp deploy` (คง Web app URL เดิม)
+  - repo secrets: **`CLASPRC_JSON`** (creds ของ clasp), **`CLASP_SCRIPT_ID`**, **`CLASP_DEPLOYMENT_ID`**
+  - deploy backend มือก็ได้: `cd apps-script && npm run redeploy`
+
+> ⚠️ `CLASPRC_JSON` คือ OAuth token ของ Google — เก็บเป็น GitHub encrypted secret (ไม่ถูกเปิดให้ fork PR) ถ้าเพิกถอนสิทธิ์ให้รัน `clasp logout` แล้วลบ/ตั้ง secret ใหม่
 
 ## สถาปัตยกรรม
 React SPA (static, ฟรี) → เรียก JSON API → Google Apps Script (auth, สูตรแต้ม, LockService) → Google Sheet (ฐานข้อมูล) / Drive (รูป) / Gmail (อีเมลผู้ปกครอง)

@@ -1,0 +1,50 @@
+name: Deploy backend to Apps Script
+
+# push + deploy อัตโนมัติเมื่อแก้ไฟล์ .gs หรือ manifest ของ backend
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/**.gs'
+      - 'apps-script/appsscript.json'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch: {}
+
+# deploy ทีละครั้ง (ห้ามยกเลิกกลางคัน เพราะ clasp deploy ควรทำจบ)
+concurrency:
+  group: clasp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps-script
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.5.0
+
+      - name: Write clasp credentials (~/.clasprc.json)
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Write .clasp.json (scriptId)
+        env:
+          SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+        run: printf '{ "scriptId": "%s", "rootDir": "." }' "$SCRIPT_ID" > .clasp.json
+
+      - name: Push code
+        run: clasp push -f
+
+      - name: Deploy web app (คง URL เดิม)
+        env:
+          DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
+        run: clasp deploy -i "$DEPLOYMENT_ID" -d "ci ${GITHUB_SHA::7}"
