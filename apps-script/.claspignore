@@ -1,0 +1,4 @@
+# push เฉพาะไฟล์ที่ Apps Script ต้องการ (ignore ทุกอย่างก่อน แล้ว unignore)
+**/**
+!appsscript.json
+!*.gs
