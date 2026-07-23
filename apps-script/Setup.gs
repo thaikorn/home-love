@@ -26,6 +26,25 @@ function initProperties() {
   Logger.log('initProperties() เสร็จ — รัน setup() ต่อได้เลย');
 }
 
+/**
+ * bootstrap() — รันครั้งเดียวจบ (แนะนำให้รันอันนี้)
+ * แก้รหัสผ่านผู้ปกครองด้านล่างก่อนกด Run แล้วกด Run → อนุญาต scope ที่ขอ
+ */
+function bootstrap() {
+  const PARENT_USERNAME = 'admin';
+  const PARENT_PASSWORD = 'CHANGE_ME';         // <<< แก้รหัสผ่านผู้ปกครองตรงนี้ก่อนรัน
+  const PARENT_EMAIL = 'thaikorn@gmail.com';
+
+  initProperties();
+  setup();
+  try {
+    createParent(PARENT_USERNAME, PARENT_PASSWORD, PARENT_EMAIL);
+  } catch (e) {
+    Logger.log('ข้ามการสร้างผู้ปกครอง: ' + e.message);
+  }
+  Logger.log('✅ bootstrap เสร็จ — ล็อกอินผู้ปกครอง username="' + PARENT_USERNAME + '"');
+}
+
 function setup() {
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('SHEET_ID')) {
