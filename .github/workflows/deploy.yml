@@ -41,7 +41,7 @@ jobs:
           npm run build
 
       - name: Sync build เข้า apps-script/Index.html
-        run: node apps-script/sync-frontend.mjs
+        run: node sync-frontend.mjs
         working-directory: apps-script
 
       - name: Install clasp
