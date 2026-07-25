@@ -45,12 +45,12 @@
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Frontend | React + Vite, PWA, i18n ไทย, responsive |
+| Frontend | React + Vite, i18n ไทย, responsive |
 | Backend API | Google Apps Script (`doGet`/`doPost`) |
 | ฐานข้อมูล | Google Sheet (แต่ละ tab = ตาราง) |
 | เก็บรูป | Google Drive |
 | อีเมล | Gmail ผ่าน `MailApp` |
-| โฮส frontend | ฟรี (GitHub Pages / Netlify / Vercel) |
+| โฮส frontend | Apps Script HTML Service (URL เดียวกับ backend, ฟรี) |
 
 **ความปลอดภัยสำคัญ:** logic ตรวจ PIN/รหัสผ่าน, คำนวณแต้ม และ credential ทั้งหมด **อยู่ฝั่ง Apps Script เท่านั้น** — frontend ไม่เคยถือ secret และไม่คำนวณแต้มเอง (กันเด็กโกงหรือดู PIN พี่น้อง). PIN/รหัสผ่านเก็บแบบ hash.
 
@@ -234,34 +234,49 @@
 
 ---
 
-## 13. สถานะการพัฒนา (Progress) — อัปเดต 2026-07-23
+## 13. สถานะการพัฒนา (Progress) — อัปเดต 2026-07-26
 
 **พัฒนา + deploy ครบทั้งระบบแล้ว ใช้งานจริงได้** (backend + frontend + CI/CD)
+
+**ย้าย hosting frontend จาก GitHub Pages มาเป็น Apps Script HTML Service ตัวเดียวจบ**
+(2026-07-26) — เพราะ GitHub Pages ช้า ตอนนี้ frontend กับ backend อยู่ที่ URL เดียวกัน
+(`doGet` ไม่มี `action` = serve หน้าเว็บ, มี `action` = JSON API เดิม) ไม่ต้องมี hosting
+แยกอีกต่อไป
 
 ### ลิงก์/ค่าสำคัญ
 | รายการ | ค่า |
 |---|---|
-| เว็บแอป (frontend) | https://thaikorn.github.io/home-love/ |
-| Backend Web app | `.../macros/s/AKfycbz61UNIlEF5d6TsATMMF015UQuSaBFVn9_XTlPs4SXbOTvvfkl9Sskn-oDgnA9_fyfo0Q/exec` |
-| GitHub repo | https://github.com/thaikorn/home-love (public) |
+| เว็บแอป (frontend + backend, URL เดียว) | `.../macros/s/AKfycbz61UNIlEF5d6TsATMMF015UQuSaBFVn9_XTlPs4SXbOTvvfkl9Sskn-oDgnA9_fyfo0Q/exec` |
+| GitHub repo (เก็บซอร์สโค้ด) | https://github.com/thaikorn/home-love (public) |
 | Apps Script project id | `11GaTxY7fyNSk_XDNIsgg899JXJVcPJbdDE-5z9k_i0t7J7ibocAjXT4r` |
 | Google Sheet (DB) id | `1syFvYW4s5exaT1pI7tWf4PS29hLri9SQKsua_Bcbua8` |
 | ผู้ปกครองคนแรก | username `admin` (รหัสผ่านตั้งเองตอน bootstrap) |
 
-### CI/CD (GitHub Actions)
-- **Frontend:** push `frontend/**` → build+deploy GitHub Pages (secret `VITE_API_URL`)
-- **Backend:** push `apps-script/**.gs` → `clasp push`+`clasp deploy` คง URL เดิม (secrets `CLASPRC_JSON`, `CLASP_SCRIPT_ID`, `CLASP_DEPLOYMENT_ID`)
-- deploy backend มือ: `cd apps-script && npm run redeploy`
+### CI/CD (GitHub Actions) — workflow เดียว (`deploy.yml`)
+- push `frontend/**` หรือ `apps-script/**.gs`/`appsscript.json` → build frontend (secret `VITE_API_URL`)
+  → sync เข้า `apps-script/Index.html` → `clasp push`+`clasp deploy` คง URL เดิม
+  (secrets `CLASPRC_JSON`, `CLASP_SCRIPT_ID`, `CLASP_DEPLOYMENT_ID`)
+- deploy มือ: `cd apps-script && npm run redeploy` (build frontend + sync + push + deploy)
+- ยกเลิก `deploy-frontend.yml`/`deploy-backend.yml` เดิม, ปิด GitHub Pages ใน repo settings แล้ว
+
+### ⚠️ ข้อจำกัดจากการย้ายมา Apps Script HTML Service
+- **ตัด PWA ออก** (`vite-plugin-pwa`) — service worker ใช้งานไม่ได้ในหน้าที่ Apps Script
+  serve เพราะ render อยู่ใน sandboxed iframe คนละ origin (`*.googleusercontent.com`)
+  กับหน้าเปลือก (`script.google.com`) — ติดตั้งเป็นแอปแบบ installable ไม่ได้อีกต่อไป
+- Frontend build ด้วย `vite-plugin-singlefile` (inline JS/CSS ทั้งหมดเข้า `index.html`
+  ไฟล์เดียว) เพราะ Apps Script ไม่มี static file routing แยกให้ `.js`/`.css`
+- favicon/PWA icons ใน `frontend/public/` ใช้งานไม่ได้แล้ว (Apps Script ไม่ serve static
+  asset จาก path อื่นนอกจาก `doGet`) — เหลือแค่ broken link เฉยๆ ไม่กระทบฟังก์ชันแอป
 
 ### ✅ เสร็จแล้ว
 - Backend ครบทุก endpoint (auth, ส่ง/ตรวจงาน, แต้ม/สตรีค/เหรียญ, แลกของ, wish, ปรับแต้มมือ, CRUD), LockService, อีเมล, อัปโหลดรูป Drive
-- Frontend ครบทุกหน้าจอเด็ก/ผู้ปกครอง + PWA + ไอคอน
-- Deploy live + CI/CD ทั้งคู่ (ทดสอบ `ping`/`children` ผ่าน)
+- Frontend ครบทุกหน้าจอเด็ก/ผู้ปกครอง
+- Deploy live + CI/CD เดียวจบผ่าน Apps Script (ทดสอบ `ping`/`children` ผ่าน)
 
 ### ⏭️ ยังไม่ได้ทำ / มาต่อวันหลัง
 - **ทดสอบ flow จริง end-to-end** ตามข้อ 11 (ยังไม่มีข้อมูลจริงในระบบ — ยังไม่ได้เพิ่มช่วงเวลา/งาน/เด็ก/รางวัล; จะลองด้วย `seedDemo()` ก็ได้)
 - ยืนยัน **อีเมลแจ้งเตือน** ส่งจริง (MailApp) เมื่อมีงาน/คำขอแลก/wish
 - ยืนยัน **อัปโหลดรูป Drive** + sharing ลิงก์เปิดดูได้จากแอป/อีเมล
 - ตรวจการคำนวณแต้มจริงให้ตรงสูตร (ตรงเวลา/สาย/ทีม/โบนัส) กับข้อมูลจริง
-- (เสริม) GitHub Actions deploy backend — ปรับ Node เวอร์ชันถ้ามี deprecation warning; พิจารณา rotate `CLASPRC_JSON`
+- พิจารณา rotate `CLASPRC_JSON`
 - (เสริม) ปรับแต่งดีไซน์/ฟีเจอร์เพิ่มตามใช้งานจริง

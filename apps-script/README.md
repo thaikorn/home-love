@@ -17,7 +17,8 @@ Backend API สำหรับแอปงานบ้านเก็บแต�
 | `Mail.gs` | อีเมลแจ้งเตือนผู้ปกครอง |
 | `Actions.gs` | action ฝั่งเด็ก/ผู้ปกครอง (ส่งงาน ตรวจงาน แลกของ ฯลฯ) |
 | `Crud.gs` | ตั้งค่า CRUD เด็ก/งาน/รางวัล/ช่วงเวลา |
-| `Code.gs` | จุดเข้า doGet/doPost + router |
+| `Code.gs` | จุดเข้า doGet/doPost + router (ไม่มี `action` ใน GET = serve หน้าเว็บจาก `Index.html`) |
+| `Index.html` | frontend build ไฟล์เดียว (generated — ไม่ commit, ดูหัวข้อ "Frontend" ด้านล่าง) |
 
 > **Sheet ID ของโปรเจกต์นี้** ถูกฝังเป็นค่าเริ่มต้นไว้แล้วใน `Setup.gs` (`DEFAULT_SHEET_ID`)
 > = `1syFvYW4s5exaT1pI7tWf4PS29hLri9SQKsua_Bcbua8` — เปลี่ยนได้ถ้าต้องการใช้ Sheet อื่น
@@ -37,12 +38,22 @@ npm run open
 #   (ไม่บังคับ) seedDemo()  — ใส่ข้อมูลตัวอย่าง (PIN เด็ก = 1234)
 
 # deploy เป็น Web app (คง URL เดิมทุกครั้งที่ redeploy)
-npm run redeploy       # = push โค้ด + สร้าง/อัปเดต deployment เดียวกัน
+npm run redeploy       # = build frontend + sync เข้า Index.html + push โค้ด + อัปเดต deployment เดียวกัน
 ```
 
 - ครั้งแรกต้องเข้าไปที่ **Deploy → New deployment → Web app** (Execute as: Me, Access: Anyone)
-  แล้วคัดลอก **Web app URL** ไปใส่ `frontend/.env` (`VITE_API_URL`)
+  แล้วคัดลอก **Web app URL** ไปใส่ `frontend/.env` (`VITE_API_URL`) — URL เดียวกันนี้คือทั้งหน้าเว็บและ API
 - `npm run redeploy` เก็บ deploymentId ไว้ใน `.clasp-deployment.json` เพื่อให้ URL ไม่เปลี่ยน
+
+## Frontend (serve ผ่าน HTML Service)
+
+`doGet` ไม่มี `action` → serve `Index.html` (frontend build ไฟล์เดียวจาก `vite-plugin-singlefile`,
+คัดลอกมาจาก `../frontend/dist/index.html` โดย `sync-frontend.mjs`) — ไม่ต้อง host frontend แยกที่ไหนอีก
+`npm run redeploy` จัดการ build + sync ให้อัตโนมัติ ถ้าจะทำมือ:
+```bash
+cd ../frontend && npm run build
+cd ../apps-script && npm run sync   # คัดลอก dist/index.html -> Index.html
+```
 
 ## Deploy แบบมือ (ถ้าไม่ใช้ clasp)
 

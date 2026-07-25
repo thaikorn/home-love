@@ -1,6 +1,6 @@
-# Home Love — Frontend (React + Vite + PWA)
+# Home Love — Frontend (React + Vite)
 
-แอปฝั่งผู้ใช้ (เด็ก + ผู้ปกครอง) เป็น React SPA แบบ PWA responsive ภาษาไทย เรียก backend ผ่าน `VITE_API_URL`
+แอปฝั่งผู้ใช้ (เด็ก + ผู้ปกครอง) เป็น React SPA responsive ภาษาไทย เรียก backend ผ่าน `VITE_API_URL`
 
 ## เริ่มพัฒนา
 
@@ -11,14 +11,18 @@ cp .env.example .env      # แล้วใส่ VITE_API_URL = Web app URL จ
 npm run dev               # เปิด http://localhost:5173
 ```
 
-## Build / Deploy (ฟรี)
+## Build / Deploy
+
+Build เป็น**ไฟล์เดียว** (`vite-plugin-singlefile` inline JS/CSS ทั้งหมดเข้า `dist/index.html`)
+แล้ว sync เข้า Apps Script serve ผ่าน HTML Service — ไม่มี hosting แยกอีกต่อไป
+(ดู [`../apps-script/README.md`](../apps-script/README.md), `npm run redeploy`)
 
 ```bash
-npm run build             # ได้ไฟล์ static ใน dist/
+npm run build             # ได้ dist/index.html ไฟล์เดียว (inline หมด)
 ```
 
-- **Netlify / Vercel:** ชี้ที่โฟลเดอร์ `frontend`, build `npm run build`, publish `dist`, ตั้ง env `VITE_API_URL`
-- **GitHub Pages:** ตั้ง `VITE_BASE=/<repo>/` ตอน build แล้ว deploy `dist/`
+> ⚠️ ตัด PWA (`vite-plugin-pwa`) ออกแล้ว — service worker ใช้ไม่ได้ในหน้าที่ Apps Script
+> serve เพราะ render อยู่ใน sandboxed iframe คนละ origin กับหน้าเปลือก
 
 ## โครงสร้าง
 
@@ -32,5 +36,6 @@ npm run build             # ได้ไฟล์ static ใน dist/
 | `src/screens/ParentApp.jsx` | ผู้ปกครอง: ตรวจงาน/แลกของ/อธิษฐาน/แต้ม+ปรับแต้ม |
 | `src/screens/ParentSettings.jsx` | CRUD เด็ก/งาน/รางวัล/ช่วงเวลา |
 
-## ไอคอน PWA
-มีไฟล์ `public/icon-192.png`, `public/icon-512.png` (หัวใจสีชมพู, ใช้เป็น maskable ด้วย) และ `public/favicon.svg` ให้แล้ว — ติดตั้งเป็นแอปได้สวยงาม
+## ไอคอน (เหลือไว้เผื่อใช้ในอนาคต)
+มีไฟล์ `public/icon-192.png`, `public/icon-512.png`, `public/favicon.svg` อยู่ แต่ Apps Script
+ไม่ serve static asset จาก path อื่นนอกจาก `doGet` — ตอนนี้จึงไม่ได้ถูกใช้งานจริง

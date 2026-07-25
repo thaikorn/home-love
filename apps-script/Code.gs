@@ -9,7 +9,15 @@
  */
 
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || 'ping';
+  const action = e && e.parameter && e.parameter.action;
+
+  // ไม่มี action ระบุมา = โหลดหน้าเว็บ (frontend build เป็นไฟล์เดียวจาก vite-plugin-singlefile)
+  if (!action) {
+    return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('Home Love — งานบ้านเก็บแต้ม')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+  }
+
   try {
     if (action === 'ping') return json_({ ok: true, data: { service: 'HomeLove', time: new Date().toISOString() } });
     if (action === 'children') return json_({ ok: true, data: publicChildren_() });

@@ -6,10 +6,12 @@
   "scripts": {
     "login": "clasp login",
     "create": "clasp create --type webapp --title \"Home Love API\" --rootDir .",
+    "build:frontend": "cd ../frontend && npm run build",
+    "sync": "node sync-frontend.mjs",
     "push": "clasp push -f",
     "open": "clasp open",
     "deploy": "clasp deploy",
-    "redeploy": "npm run push && node deploy.mjs",
+    "redeploy": "npm run build:frontend && npm run sync && npm run push && node deploy.mjs",
     "logs": "clasp logs --watch"
   },
   "devDependencies": {

@@ -2,3 +2,4 @@ node_modules
 .clasp.json
 .clasp-deployment.json
 *.log
+Index.html

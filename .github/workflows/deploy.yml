@@ -1,0 +1,70 @@
+name: Deploy Home Love (frontend + backend to Apps Script)
+
+# build frontend + deploy ไป Apps Script ตัวเดียว (HTML Service serve หน้าเว็บ + JSON API)
+# แทนที่ deploy-frontend.yml (GitHub Pages) และ deploy-backend.yml (clasp) เดิม
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'apps-script/**.gs'
+      - 'apps-script/appsscript.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: {}
+
+# deploy ทีละครั้ง (ห้ามยกเลิกกลางคัน เพราะ clasp deploy ควรทำจบ)
+concurrency:
+  group: clasp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          # URL ของ Apps Script Web App เอง — ตั้งใน repo Settings > Secrets and variables > Actions
+          # (frontend serve จาก URL นี้ แต่ยังต้อง fetch ไปที่ URL เต็ม เพราะหน้าเว็บ
+          # render อยู่ใน sandboxed iframe คนละ origin กับ script.google.com)
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync build เข้า apps-script/Index.html
+        run: node apps-script/sync-frontend.mjs
+        working-directory: apps-script
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.5.0
+
+      - name: Write clasp credentials (~/.clasprc.json)
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Write .clasp.json (scriptId)
+        working-directory: apps-script
+        env:
+          SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+        run: |
+          printf '{ "scriptId": "%s", "rootDir": "." }' "$SCRIPT_ID" > .clasp.json
+
+      - name: Push code
+        working-directory: apps-script
+        run: clasp push -f
+
+      - name: Deploy web app (คง URL เดิม)
+        working-directory: apps-script
+        env:
+          DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
+        run: clasp deploy -i "$DEPLOYMENT_ID" -d "ci ${GITHUB_SHA::7}"

@@ -9,21 +9,22 @@
 
 ```
 docs/spec.md        เอกสาร requirements (v1.1)
-apps-script/        Backend API (Google Apps Script + Google Sheet + Drive + Gmail)
-frontend/           React + Vite + PWA (ผู้ใช้เด็ก/ผู้ปกครอง)
+apps-script/        Backend API + frontend hosting (Google Apps Script + Google Sheet + Drive + Gmail)
+frontend/           React + Vite (ผู้ใช้เด็ก/ผู้ปกครอง) — build แล้ว serve ผ่าน Apps Script HTML Service
 ```
 
 ## เริ่มใช้งาน
 1. ตั้งค่า backend ตาม [`apps-script/README.md`](apps-script/README.md) → ได้ Web app URL
    (deploy อัตโนมัติด้วย clasp: `cd apps-script && npm install && npm run login && npm run create && npm run redeploy`)
-2. ตั้งค่า frontend ตาม [`frontend/README.md`](frontend/README.md) → ใส่ URL ใน `.env` แล้ว deploy
+2. ตั้งค่า `frontend/.env` ตาม [`frontend/README.md`](frontend/README.md) ใส่ `VITE_API_URL` เป็น Web app URL เดียวกัน
+   แล้ว `npm run redeploy` (build frontend + sync + push + deploy) — frontend กับ backend อยู่ URL เดียวกัน ไม่ต้อง host แยก
 
 ## Deploy อัตโนมัติ (GitHub Actions)
-- **Frontend** (`.github/workflows/deploy-frontend.yml`) — push `frontend/**` → build + deploy ขึ้น **GitHub Pages**
-  - repo secret: **`VITE_API_URL`** = Web app URL
-- **Backend** (`.github/workflows/deploy-backend.yml`) — push `apps-script/**.gs` → `clasp push` + `clasp deploy` (คง Web app URL เดิม)
-  - repo secrets: **`CLASPRC_JSON`** (creds ของ clasp), **`CLASP_SCRIPT_ID`**, **`CLASP_DEPLOYMENT_ID`**
-  - deploy backend มือก็ได้: `cd apps-script && npm run redeploy`
+- workflow เดียว (`.github/workflows/deploy.yml`) — push `frontend/**` หรือ `apps-script/**.gs`/`appsscript.json`
+  → build frontend (secret `VITE_API_URL`) → sync เข้า `apps-script/Index.html` → `clasp push` + `clasp deploy`
+  (คง Web app URL เดิม)
+  - repo secrets: **`CLASPRC_JSON`** (creds ของ clasp), **`CLASP_SCRIPT_ID`**, **`CLASP_DEPLOYMENT_ID`**, **`VITE_API_URL`**
+  - deploy มือก็ได้: `cd apps-script && npm run redeploy`
 
 > ⚠️ `CLASPRC_JSON` คือ OAuth token ของ Google — เก็บเป็น GitHub encrypted secret (ไม่ถูกเปิดให้ fork PR) ถ้าเพิกถอนสิทธิ์ให้รัน `clasp logout` แล้วลบ/ตั้ง secret ใหม่
 
