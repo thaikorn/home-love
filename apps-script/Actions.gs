@@ -43,7 +43,7 @@ function availableChores_() {
     result.push({
       id: c.id, name: c.name, icon: c.icon, basePoints: Number(c.basePoints) || 0,
       timeWindowId: tw.id, timeWindowName: tw.name,
-      onTime: isBeforeCutoff_(tw), cutoff: tw.cutoff, endTime: tw.endTime,
+      onTime: isBeforeCutoff_(tw), cutoff: toHm_(tw.cutoff), endTime: toHm_(tw.endTime),
     });
   });
   return result;
@@ -145,7 +145,7 @@ function checkRedeemLimit_(childId, reward) {
   });
   function countSince(days) {
     const since = Date.now() - days * 86400000;
-    return all.filter(function (r) { return new Date(r.requestedAt).getTime() >= since; }).length;
+    return all.filter(function (r) { return new Date(toIso_(r.requestedAt)).getTime() >= since; }).length;
   }
   const ld = Number(reward.limitDay), lw = Number(reward.limitWeek), lm = Number(reward.limitMonth);
   if (reward.limitDay !== '' && !isNaN(ld) && countSince(1) >= ld) throw new Error('เกินลิมิตต่อวันแล้ว');
@@ -172,13 +172,13 @@ const PARENT_ACTIONS = {
       const tw = findById_(TAB.TimeWindows, sub.timeWindowId);
       const cfg = getConfig_();
       const quality = Math.max(10, Math.min(100, Number(p.quality) || 0));
-      const submittedRef = { hm: Utilities.formatDate(new Date(sub.submittedAt), TZ_(), 'HH:mm') };
+      const submittedRef = { hm: Utilities.formatDate(new Date(toIso_(sub.submittedAt)), TZ_(), 'HH:mm') };
       const onTime = hmToMin_(submittedRef.hm) < hmToMin_(tw.cutoff);
       const members = toArr_(sub.teamMembers);
       const teamSize = members.length || 1;
       const perPerson = computePoints_(chore, tw, quality, onTime, teamSize, cfg);
 
-      const today = Utilities.formatDate(new Date(sub.submittedAt), TZ_(), 'yyyy-MM-dd');
+      const today = Utilities.formatDate(new Date(toIso_(sub.submittedAt)), TZ_(), 'yyyy-MM-dd');
       const badgesByChild = {};
       members.forEach(function (cid) {
         addPoints_(cid, perPerson, false);
@@ -223,7 +223,7 @@ const PARENT_ACTIONS = {
     let rows = readAll_(TAB.PointAdjustments);
     if (p && p.childId) rows = rows.filter(function (r) { return String(r.childId) === String(p.childId); });
     return rows.map(function (r) {
-      return { id: r.id, childId: r.childId, delta: Number(r.delta), reason: r.reason, adjustedBy: r.adjustedBy, createdAt: r.createdAt };
+      return { id: r.id, childId: r.childId, delta: Number(r.delta), reason: r.reason, adjustedBy: r.adjustedBy, createdAt: toIso_(r.createdAt) };
     }).sort(byNewest_('createdAt'));
   },
 
@@ -295,7 +295,7 @@ const PARENT_ACTIONS = {
 // ============ mappers ============
 function mapSubmission_(x) {
   return {
-    id: x.id, choreId: x.choreId, status: x.status, submittedAt: x.submittedAt,
+    id: x.id, choreId: x.choreId, status: x.status, submittedAt: toIso_(x.submittedAt),
     photoUrl: x.photoUrl, quality: x.quality, rejectReason: x.rejectReason,
     pointsPerPerson: x.pointsPerPerson,
     choreName: (findById_(TAB.Chores, x.choreId) || {}).name || '',
@@ -309,22 +309,22 @@ function mapSubmissionFull_(x) {
   });
   return {
     id: x.id, choreName: chore.name, choreIcon: chore.icon, photoUrl: x.photoUrl,
-    submittedAt: x.submittedAt, submittedByName: child.name, teamMembers: members,
+    submittedAt: toIso_(x.submittedAt), submittedByName: child.name, teamMembers: members,
     basePoints: Number(chore.basePoints) || 0, timeWindowId: x.timeWindowId,
   };
 }
 function mapRedemption_(r) {
   const rw = findById_(TAB.Rewards, r.rewardId) || {};
-  return { id: r.id, rewardName: rw.name || '', pointsReserved: Number(r.pointsReserved), status: r.status, requestedAt: r.requestedAt };
+  return { id: r.id, rewardName: rw.name || '', pointsReserved: Number(r.pointsReserved), status: r.status, requestedAt: toIso_(r.requestedAt) };
 }
 function mapRedemptionFull_(r) {
   const rw = findById_(TAB.Rewards, r.rewardId) || {};
   const c = findById_(TAB.Children, r.childId) || {};
-  return { id: r.id, childName: c.name, rewardName: rw.name || '', cost: Number(r.pointsReserved), requestedAt: r.requestedAt };
+  return { id: r.id, childName: c.name, rewardName: rw.name || '', cost: Number(r.pointsReserved), requestedAt: toIso_(r.requestedAt) };
 }
 function mapWishFull_(w) {
   const c = findById_(TAB.Children, w.childId) || {};
-  return { id: w.id, childName: c.name, text: w.text, status: w.status, createdAt: w.createdAt };
+  return { id: w.id, childName: c.name, text: w.text, status: w.status, createdAt: toIso_(w.createdAt) };
 }
 function byNewest_(field) {
   return function (a, b) { return new Date(b[field]).getTime() - new Date(a[field]).getTime(); };

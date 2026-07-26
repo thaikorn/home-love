@@ -48,6 +48,7 @@ function doPost(e) {
 // รวม action ทั้งหมด และตรวจสิทธิ์ตาม prefix
 function dispatch_(action, token, params) {
   if (!action) throw new Error('ไม่ได้ระบุ action');
+  ensureRepaired_(); // migration ครั้งเดียว: ซ่อมค่าเวลา/วันที่ที่ Sheet เคยแปลงชนิดไป
 
   // --- login (ไม่ต้องมี token) ---
   if (action === 'auth.childList') return publicChildren_();

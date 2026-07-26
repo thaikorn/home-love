@@ -31,7 +31,7 @@ function addPoints_(childId, delta, enforceFloor) {
 
 // อัปเดตสตรีค+มอบเหรียญ เมื่ออนุมัติงาน "งานแรกของวัน" (6.4)
 function bumpStreak_(child, todayStr, cfg) {
-  const last = child.lastStreakDate ? String(child.lastStreakDate) : '';
+  const last = toDateStr_(child.lastStreakDate); // อาจถูก Sheet แปลงเป็น Date มาก่อน
   if (last === todayStr) return { child: child, newBadges: [] }; // วันนี้ได้สตรีคแล้ว
 
   const yesterday = Utilities.formatDate(

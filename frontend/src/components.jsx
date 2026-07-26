@@ -47,6 +47,50 @@ export function StatusChip({ status }) {
   return <span className={'chip ' + (map[status] || 'warn')}>{status}</span>;
 }
 
+// ---------- ตัวเลือกอีโมจิ ----------
+// ไอคอนงานบ้านที่ใช้บ่อย (เลือกจากตารางได้ หรือพิมพ์อีโมจิอื่นเองก็ได้)
+export const CHORE_ICONS = [
+  '🧹', '🧽', '🧼', '🧺', '🪣', '🧴', '🗑️', '♻️',
+  '🛏️', '🪟', '🪑', '🚪', '🛋️', '🪴', '🌱', '💧',
+  '🍽️', '🥣', '🍚', '🥗', '🔪', '🍳', '☕', '🫧',
+  '👕', '👚', '🧦', '👟', '🪥', '🚿', '🚽', '🧻',
+  '🐶', '🐱', '🐟', '🐹', '🚗', '🛒', '📚', '✏️',
+  '🎒', '🧸', '💊', '📦', '🔌', '💡', '📮', '🧾',
+];
+// อีโมจิสำหรับรูปประจำตัวเด็ก
+export const AVATAR_ICONS = [
+  '🐱', '🐶', '🐰', '🐼', '🦊', '🐻', '🐨', '🐯',
+  '🦁', '🐮', '🐷', '🐸', '🐵', '🦄', '🐥', '🐧',
+  '🦉', '🐬', '🐢', '🦋', '🐙', '🦖', '👦', '👧',
+  '🧒', '👶', '🌸', '⭐', '🌈', '🍓', '🍎', '🍭',
+  '🚀', '⚽', '🎨', '🎵',
+];
+
+/**
+ * ช่องเลือกอีโมจิ: ตารางให้กดเลือก + ช่องพิมพ์เอง (ค่าเป็น string เดียว)
+ */
+export function EmojiPicker({ value, onChange, options, label = 'ไอคอน' }) {
+  return (
+    <>
+      <label>{label} <span style={{ opacity: 0.7 }}>— กดเลือก หรือพิมพ์อีโมจิเองก็ได้</span></label>
+      <div className="emoji-grid">
+        {options.map((e, i) => (
+          <button
+            key={e + i}
+            type="button"
+            className={value === e ? 'on' : ''}
+            onClick={() => onChange(e)}
+          >{e}</button>
+        ))}
+      </div>
+      <div className="emoji-current">
+        <span className="preview">{value || '❓'}</span>
+        <input value={value} maxLength={8} onChange={(ev) => onChange(ev.target.value)} placeholder="อีโมจิ" />
+      </div>
+    </>
+  );
+}
+
 // วันที่แบบไทยสั้นๆ
 export function fmtDate(iso) {
   if (!iso) return '';

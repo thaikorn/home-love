@@ -63,6 +63,26 @@ const SCHEMA = {
   ],
 };
 
+/**
+ * คอลัมน์ที่ต้องเก็บเป็น "ข้อความล้วน" (number format = '@')
+ * ถ้าไม่บังคับ Google Sheet จะแปลงค่าให้เองตอนเขียน เช่น
+ *   '08:00'      -> ค่าเวลา (อ่านกลับมาเป็น Date) ทำให้ hmToMin_() ได้ NaN → ช่วงเวลาไม่เคยเปิด
+ *   '2026-07-26' -> วันที่ (อ่านกลับมาเป็น Date) ทำให้เทียบ lastStreakDate ไม่ตรง → สตรีคไม่เดิน
+ */
+const TEXT_COLS = {
+  Children: ['pinHash', 'lastStreakDate'],
+  Parents: ['passwordHash'],
+  TimeWindows: ['startTime', 'endTime', 'cutoff', 'days'],
+  Chores: ['timeWindowIds'],
+  Submissions: ['teamMembers', 'submittedAt', 'reviewedAt'],
+  Redemptions: ['requestedAt', 'decidedAt'],
+  Wishes: ['createdAt'],
+  Badges: ['awardedAt'],
+  PointAdjustments: ['createdAt'],
+  Config: ['value'],
+  Sessions: ['token', 'expiresAt'],
+};
+
 // ค่า Config เริ่มต้น
 const DEFAULT_CONFIG = {
   latePercent: '60',       // % แต้มเมื่อส่งสาย

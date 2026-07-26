@@ -37,7 +37,7 @@ function getSession_(token) {
   const rows = where_(TAB.Sessions, function (s) { return s.token === token; });
   if (!rows.length) return null;
   const s = rows[0];
-  if (new Date(s.expiresAt).getTime() < Date.now()) {
+  if (new Date(toIso_(s.expiresAt)).getTime() < Date.now()) {
     logout_(s.token); // ลบ session ที่หมดอายุทิ้ง
     return null;
   }

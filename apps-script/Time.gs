@@ -15,9 +15,13 @@ function now_() {
   return { date: date, hm: hm, dow: jsDow, ts: d };
 }
 
+// รับได้ทั้ง 'HH:mm', Date (ที่ Sheet แปลงไปแล้ว) และตัวเลขเศษของวัน — คืนจำนวนนาทีจากเที่ยงคืน
 function hmToMin_(hm) {
-  const parts = String(hm).split(':');
-  return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || '0', 10);
+  const parts = toHm_(hm).split(':');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1] || '0', 10);
+  if (isNaN(h)) return NaN;
+  return h * 60 + (isNaN(m) ? 0 : m);
 }
 
 // ช่วงเวลานี้เปิดอยู่ตอนนี้ไหม (วันตรง + เวลาอยู่ในช่วง)

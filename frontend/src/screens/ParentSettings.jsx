@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal } from '../components.jsx';
+import { useToast, Loading, Empty, Modal, EmojiPicker, CHORE_ICONS, AVATAR_ICONS } from '../components.jsx';
 
 const SUBTABS = [
   { key: 'children', label: 'เด็ก' },
@@ -94,10 +94,9 @@ function ChildForm({ data, onClose, onDone }) {
     <Modal title={isNew ? 'เพิ่มเด็ก' : 'แก้ไขเด็ก'} onClose={onClose}>
       <label>ชื่อ</label>
       <input value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="row">
-        <div><label>Avatar (อีโมจิ)</label><input value={avatar} onChange={(e) => setAvatar(e.target.value)} /></div>
-        <div><label>สีประจำตัว</label><input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></div>
-      </div>
+      <EmojiPicker value={avatar} onChange={setAvatar} options={AVATAR_ICONS} label="รูปประจำตัว" />
+      <label>สีประจำตัว</label>
+      <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
       <label>PIN 4 หลัก {isNew ? '(บังคับ)' : '(เว้นว่าง = ไม่เปลี่ยน)'}</label>
       <input inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} />
       {!isNew && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={active} onChange={(e) => setActive(e.target.checked)} /> เปิดใช้งาน</label>}
@@ -133,7 +132,15 @@ function ChoresCrud() {
         <div key={c.id} className="item">
           <div className="grow">
             <div className="title">{c.icon} {c.name} {!c.active && <span className="chip bad">ปิด</span>}</div>
-            <div className="sub">{c.basePoints} แต้ม · {c.timeWindowIds.map((id) => (tws.find((t) => t.id === id) || {}).name).filter(Boolean).join(', ') || 'ไม่มีช่วงเวลา'}</div>
+            <div className="sub">
+              {c.basePoints} แต้ม
+              {(() => {
+                const names = c.timeWindowIds.map((id) => (tws.find((t) => t.id === id) || {}).name).filter(Boolean);
+                return names.length
+                  ? ' · ' + names.join(', ')
+                  : <> · <span className="chip bad">ยังไม่ได้ตั้งช่วงเวลา — ลูกจะไม่เห็นงานนี้</span></>;
+              })()}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn gray sm" onClick={() => setEdit(c)}>แก้</button>
@@ -158,6 +165,11 @@ function ChoreForm({ data, tws, onClose, onDone }) {
 
   function toggle(id) { setWins((w) => w.includes(id) ? w.filter((x) => x !== id) : [...w, id]); }
   async function save() {
+    if (!name.trim()) return toast('ใส่ชื่องานก่อน', 'err');
+    // งานที่ไม่ผูกช่วงเวลา = ลูกจะไม่เห็นงานนี้เลย จึงบังคับให้เลือกอย่างน้อย 1 ช่วง
+    if (!wins.length) {
+      return toast(tws.length ? 'เลือกช่วงเวลาที่ทำได้อย่างน้อย 1 ช่วง' : 'ไปเพิ่มช่วงเวลาที่แท็บ “ช่วงเวลา” ก่อน', 'err');
+    }
     setBusy(true);
     try {
       const p = { name, icon, basePoints: Number(basePoints), timeWindowIds: wins };
@@ -169,16 +181,26 @@ function ChoreForm({ data, tws, onClose, onDone }) {
 
   return (
     <Modal title={isNew ? 'เพิ่มงาน' : 'แก้ไขงาน'} onClose={onClose}>
-      <div className="row">
-        <div style={{ flex: 3 }}><label>ชื่องาน</label><input value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div style={{ flex: 1 }}><label>ไอคอน</label><input value={icon} onChange={(e) => setIcon(e.target.value)} /></div>
-      </div>
+      <label>ชื่องาน</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <EmojiPicker value={icon} onChange={setIcon} options={CHORE_ICONS} label="ไอคอนงาน" />
       <label>แต้มพื้นฐาน</label>
       <input type="number" value={basePoints} onChange={(e) => setBasePoints(e.target.value)} />
-      <label>ช่วงเวลาที่ทำได้</label>
-      <div className="tag-days">
-        {tws.map((t) => <button key={t.id} className={wins.includes(t.id) ? 'on' : ''} onClick={() => toggle(t.id)}>{t.name}</button>)}
-      </div>
+      <label>ช่วงเวลาที่ทำได้ (เลือกได้หลายช่วง)</label>
+      {tws.length === 0 ? (
+        <div className="muted">ยังไม่มีช่วงเวลา — ไปเพิ่มที่แท็บ “ช่วงเวลา” ก่อน ไม่งั้นลูกจะไม่เห็นงานนี้</div>
+      ) : (
+        <div className="tag-days">
+          {tws.map((t) => (
+            <button key={t.id} className={wins.includes(t.id) ? 'on' : ''} onClick={() => toggle(t.id)}>
+              {t.name} {t.startTime}–{t.endTime}
+            </button>
+          ))}
+        </div>
+      )}
+      {tws.length > 0 && wins.length === 0 && (
+        <div className="muted" style={{ color: 'var(--bad)' }}>ยังไม่ได้เลือกช่วงเวลา — ลูกจะไม่เห็นงานนี้</div>
+      )}
       {!isNew && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={active} onChange={(e) => setActive(e.target.checked)} /> เปิดใช้งาน</label>}
       <button className="btn mt" onClick={save} disabled={busy}>บันทึก</button>
     </Modal>

@@ -64,6 +64,7 @@ function setup() {
     sh.getRange(1, 1, 1, cols.length).setValues([cols]);
     sh.setFrozenRows(1);
   });
+  applyTextFormats_();
   // ลบ tab "Sheet1" เริ่มต้นถ้ายังมี
   const def = ss.getSheetByName('Sheet1');
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
@@ -74,6 +75,9 @@ function setup() {
   Object.keys(DEFAULT_CONFIG).forEach(function (k) {
     if (!existing[k]) insert_(TAB.Config, { key: k, value: DEFAULT_CONFIG[k] });
   });
+
+  // ซ่อมข้อมูลเดิมที่ Sheet เคยแปลงชนิดไป (ไม่ทำอะไรถ้าข้อมูลถูกอยู่แล้ว)
+  repairSheetTypes();
 
   Logger.log('setup() เสร็จ — สร้าง tab และ config เริ่มต้นแล้ว');
   Logger.log('ขั้นต่อไป: รัน createParent("admin","รหัสผ่าน","email@example.com") เพื่อสร้างผู้ปกครองคนแรก');
@@ -93,6 +97,80 @@ function createParent(username, password, email) {
   insert_(TAB.Parents, parent);
   Logger.log('สร้างผู้ปกครอง "' + username + '" แล้ว');
   return parent.id;
+}
+
+/** บังคับ number format ของคอลัมน์ข้อความล้วนทุก tab (กัน Sheet แปลงค่าตอนเขียน) */
+function applyTextFormats_() {
+  const ss = ss_();
+  Object.keys(SCHEMA).forEach(function (tab) {
+    const sh = ss.getSheetByName(tab);
+    if (!sh) return;
+    textColIdx_(tab).forEach(function (i) {
+      sh.getRange(2, i, Math.max(1, sh.getMaxRows() - 1), 1).setNumberFormat('@');
+    });
+  });
+}
+
+// ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
+const REPAIR_FLAG_ = 'REPAIR_TYPES_V1';
+function ensureRepaired_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty(REPAIR_FLAG_)) return;
+  try {
+    withLock_(function () {
+      if (props.getProperty(REPAIR_FLAG_)) return;
+      applyTextFormats_();
+      repairSheetTypes();
+      props.setProperty(REPAIR_FLAG_, new Date().toISOString());
+    });
+  } catch (err) {
+    Logger.log('ensureRepaired_ ล้มเหลว (ข้ามไป): ' + (err.message || err));
+  }
+}
+
+/**
+ * repairSheetTypes() — ซ่อมข้อมูลเดิมที่ Google Sheet แปลงชนิดไปแล้ว
+ * (เช่น startTime/endTime/cutoff กลายเป็นค่าเวลา, lastStreakDate กลายเป็นวันที่)
+ * เขียนกลับเป็นข้อความล้วนตามรูปแบบที่โค้ดคาดหวัง — รันซ้ำได้ ไม่พังถ้าข้อมูลถูกอยู่แล้ว
+ * รันหลัง setup() หนึ่งครั้งบนชีตที่มีข้อมูลอยู่แล้ว
+ */
+function repairSheetTypes() {
+  const HM = { TimeWindows: ['startTime', 'endTime', 'cutoff'] };
+  const DATE = { Children: ['lastStreakDate'] };
+  const ISO = {
+    Submissions: ['submittedAt', 'reviewedAt'],
+    Redemptions: ['requestedAt', 'decidedAt'],
+    Wishes: ['createdAt'],
+    Badges: ['awardedAt'],
+    PointAdjustments: ['createdAt'],
+    Sessions: ['expiresAt'],
+  };
+  let fixed = 0;
+
+  function repair(map, converter) {
+    Object.keys(map).forEach(function (tab) {
+      const sh = sheet_(tab);
+      const cols = SCHEMA[tab];
+      const last = sh.getLastRow();
+      if (last < 2) return;
+      map[tab].forEach(function (name) {
+        const idx = cols.indexOf(name) + 1;
+        if (idx <= 0) return;
+        const rng = sh.getRange(2, idx, last - 1, 1);
+        const vals = rng.getValues();
+        const out = vals.map(function (row) { return [converter(row[0])]; });
+        rng.setNumberFormat('@');
+        rng.setValues(out);
+        vals.forEach(function (row, i) { if (String(row[0]) !== String(out[i][0])) fixed++; });
+      });
+    });
+  }
+
+  repair(HM, toHm_);
+  repair(DATE, toDateStr_);
+  repair(ISO, toIso_);
+  Logger.log('repairSheetTypes() เสร็จ — แก้ค่าที่เพี้ยน ' + fixed + ' ช่อง');
+  return fixed;
 }
 
 /** ใส่ข้อมูลตัวอย่างเพื่อลองเล่น (ไม่บังคับ) */

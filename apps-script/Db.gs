@@ -45,12 +45,31 @@ function where_(tab, predicate) {
   return readAll_(tab).filter(predicate);
 }
 
+// ดัชนีคอลัมน์ (1-based) ที่ต้องบังคับเป็นข้อความล้วนของ tab นั้น
+function textColIdx_(tab) {
+  const cols = SCHEMA[tab];
+  return (TEXT_COLS[tab] || [])
+    .map(function (name) { return cols.indexOf(name) + 1; })
+    .filter(function (i) { return i > 0; });
+}
+
+// ตั้ง number format เป็นข้อความล้วน "ก่อน" เขียนค่า ไม่งั้น Sheet แปลงค่าให้เอง
+function forceTextFormat_(sh, tab, rowNum, onlyCols) {
+  textColIdx_(tab).forEach(function (i) {
+    if (onlyCols && onlyCols.indexOf(i) < 0) return;
+    sh.getRange(rowNum, i).setNumberFormat('@');
+  });
+}
+
 // เพิ่มแถวใหม่ (obj ต้องมี key ตาม SCHEMA; ที่ขาดจะเว้นว่าง)
 function insert_(tab, obj) {
   const sh = sheet_(tab);
   const cols = SCHEMA[tab];
   const row = cols.map(function (c) { return obj[c] === undefined ? '' : obj[c]; });
-  sh.appendRow(row);
+  const rowNum = sh.getLastRow() + 1;
+  if (rowNum > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 1); // ชีตเต็ม — ต่อแถวเพิ่ม
+  forceTextFormat_(sh, tab, rowNum);
+  sh.getRange(rowNum, 1, 1, cols.length).setValues([row]);
   return obj;
 }
 
@@ -63,7 +82,9 @@ function update_(tab, id, patch) {
   const rowNum = existing._row;
   Object.keys(patch).forEach(function (key) {
     const idx = cols.indexOf(key);
-    if (idx >= 0) sh.getRange(rowNum, idx + 1).setValue(patch[key]);
+    if (idx < 0) return;
+    forceTextFormat_(sh, tab, rowNum, [idx + 1]);
+    sh.getRange(rowNum, idx + 1).setValue(patch[key]);
   });
   return Object.assign({}, existing, patch);
 }
@@ -89,6 +110,51 @@ function fromArr_(arr) {
 
 function toBool_(cell) {
   return cell === true || cell === 'TRUE' || cell === 'true' || cell === 1 || cell === '1';
+}
+
+function isDate_(v) {
+  return Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime());
+}
+
+function pad2_(n) {
+  return ('0' + n).slice(-2);
+}
+
+// เขตเวลาของ spreadsheet (cache ไว้ในรอบการรัน)
+const SS_TZ_ = {};
+function ssTz_() {
+  if (!SS_TZ_.tz) SS_TZ_.tz = ss_().getSpreadsheetTimeZone();
+  return SS_TZ_.tz;
+}
+
+/**
+ * อ่านค่าเวลาจาก cell ให้เป็น 'HH:mm' เสมอ
+ * รองรับทั้งข้อความ '08:00' (แบบใหม่), Date (ข้อมูลเก่าที่ Sheet แปลงไปแล้ว)
+ * และตัวเลขเศษของวัน (0.5 = 12:00)
+ */
+function toHm_(cell) {
+  if (cell === '' || cell === null || cell === undefined) return '';
+  if (isDate_(cell)) return Utilities.formatDate(cell, ssTz_(), 'HH:mm');
+  if (typeof cell === 'number' && cell >= 0 && cell < 1) {
+    const mins = Math.round(cell * 1440);
+    return pad2_(Math.floor(mins / 60)) + ':' + pad2_(mins % 60);
+  }
+  const m = String(cell).match(/(\d{1,2}):(\d{2})/);
+  return m ? pad2_(m[1]) + ':' + m[2] : String(cell).trim();
+}
+
+// อ่านค่าวันที่จาก cell ให้เป็น 'yyyy-MM-dd' เสมอ
+function toDateStr_(cell) {
+  if (cell === '' || cell === null || cell === undefined) return '';
+  if (isDate_(cell)) return Utilities.formatDate(cell, ssTz_(), 'yyyy-MM-dd');
+  return String(cell).trim().slice(0, 10);
+}
+
+// อ่านค่า timestamp จาก cell ให้เป็น ISO string เสมอ
+function toIso_(cell) {
+  if (cell === '' || cell === null || cell === undefined) return '';
+  if (isDate_(cell)) return cell.toISOString();
+  return String(cell).trim();
 }
 
 function newId_(prefix) {

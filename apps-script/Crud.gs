@@ -25,6 +25,24 @@ function rewardHasHistory_(rewardId) {
   return where_(TAB.Redemptions, function (r) { return String(r.rewardId) === String(rewardId); }).length > 0;
 }
 
+/**
+ * ตรวจ+แปลงเวลาของช่วงเวลาให้เป็นข้อความ 'HH:mm' (กันค่าที่ Sheet เคยแปลงเป็น Date)
+ * คืน {startTime, endTime, cutoff}
+ */
+function validateTw_(p) {
+  const startTime = toHm_(p.startTime);
+  const endTime = toHm_(p.endTime);
+  const cutoff = toHm_(p.cutoff) || endTime;
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    throw new Error('ต้องระบุเวลาเริ่มและเวลาสิ้นสุด');
+  }
+  if (hmToMin_(endTime) <= hmToMin_(startTime)) throw new Error('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม');
+  if (hmToMin_(cutoff) < hmToMin_(startTime) || hmToMin_(cutoff) > hmToMin_(endTime)) {
+    throw new Error('cutoff ต้องอยู่ระหว่างเวลาเริ่มและเวลาสิ้นสุด');
+  }
+  return { startTime: startTime, endTime: endTime, cutoff: cutoff };
+}
+
 const CRUD_ACTIONS = {
   // ---------- เด็ก ----------
   'parent.children.list': function () {
@@ -148,24 +166,40 @@ const CRUD_ACTIONS = {
   'parent.timewindows.list': function () {
     return where_(TAB.TimeWindows, function () { return true; }).map(function (t) {
       return {
-        id: t.id, name: t.name, startTime: t.startTime, endTime: t.endTime, cutoff: t.cutoff,
+        id: t.id, name: t.name,
+        startTime: toHm_(t.startTime), endTime: toHm_(t.endTime), cutoff: toHm_(t.cutoff),
         days: toArr_(t.days).map(Number), bonusMultiplier: Number(t.bonusMultiplier) || 1, active: toBool_(t.active),
       };
     });
   },
   'parent.timewindows.create': function (s, p) {
     if (!p.name) throw new Error('ต้องมีชื่อช่วงเวลา');
+    const t = validateTw_(p);
+    const days = (p.days && p.days.length) ? p.days : [1, 2, 3, 4, 5, 6, 7];
     const tw = {
-      id: newId_('tw'), name: p.name, startTime: p.startTime, endTime: p.endTime, cutoff: p.cutoff || p.endTime,
-      days: fromArr_(p.days || [1, 2, 3, 4, 5, 6, 7]), bonusMultiplier: Number(p.bonusMultiplier) || 1, active: true,
+      id: newId_('tw'), name: p.name, startTime: t.startTime, endTime: t.endTime, cutoff: t.cutoff,
+      days: fromArr_(days), bonusMultiplier: Number(p.bonusMultiplier) || 1, active: true,
     };
     insert_(TAB.TimeWindows, tw);
     return { id: tw.id };
   },
   'parent.timewindows.update': function (s, p) {
     const patch = {};
-    ['name', 'startTime', 'endTime', 'cutoff'].forEach(function (k) { if (p[k] !== undefined) patch[k] = p[k]; });
-    if (p.days !== undefined) patch.days = fromArr_(p.days);
+    if (p.name !== undefined) patch.name = p.name;
+    if (p.startTime !== undefined || p.endTime !== undefined || p.cutoff !== undefined) {
+      const cur = findById_(TAB.TimeWindows, p.id);
+      if (!cur) throw new Error('ไม่พบช่วงเวลา');
+      const t = validateTw_({
+        startTime: p.startTime === undefined ? cur.startTime : p.startTime,
+        endTime: p.endTime === undefined ? cur.endTime : p.endTime,
+        cutoff: p.cutoff === undefined ? cur.cutoff : p.cutoff,
+      });
+      patch.startTime = t.startTime; patch.endTime = t.endTime; patch.cutoff = t.cutoff;
+    }
+    if (p.days !== undefined) {
+      if (!p.days.length) throw new Error('เลือกวันในสัปดาห์อย่างน้อย 1 วัน');
+      patch.days = fromArr_(p.days);
+    }
     if (p.bonusMultiplier !== undefined) patch.bonusMultiplier = Number(p.bonusMultiplier) || 1;
     if (p.active !== undefined) patch.active = !!p.active;
     update_(TAB.TimeWindows, p.id, patch);
