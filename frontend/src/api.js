@@ -1,7 +1,11 @@
 // api.js — ตัวเรียก backend (Apps Script Web App)
 // ส่ง POST เป็น text/plain เพื่อเลี่ยง CORS preflight; token แนบใน body
 
-const API_URL = import.meta.env.VITE_API_URL;
+// ลำดับ: ค่าที่ build มา (VITE_API_URL) → ค่าที่ backend ฉีดให้ตอน serve หน้าเว็บ
+// (ตัวหลังทำให้ build ที่ไม่มี .env ยังใช้งานได้ — ดู servePage_() ใน Code.gs)
+const API_URL = import.meta.env.VITE_API_URL
+  || (typeof window !== 'undefined' ? window.__API_URL__ : '')
+  || '';
 const TOKEN_KEY = 'homelove_token';
 
 export function getToken() {

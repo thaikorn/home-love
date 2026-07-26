@@ -12,11 +12,7 @@ function doGet(e) {
   const action = e && e.parameter && e.parameter.action;
 
   // ไม่มี action ระบุมา = โหลดหน้าเว็บ (frontend build เป็นไฟล์เดียวจาก vite-plugin-singlefile)
-  if (!action) {
-    return HtmlService.createHtmlOutputFromFile('Index')
-      .setTitle('Home Love — งานบ้านเก็บแต้ม')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
-  }
+  if (!action) return servePage_();
 
   try {
     if (action === 'ping') return json_({ ok: true, data: { service: 'HomeLove', time: new Date().toISOString() } });
@@ -25,6 +21,29 @@ function doGet(e) {
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   }
+}
+
+/**
+ * serve หน้าเว็บ พร้อมฉีด URL ของ web app ไว้ที่ window.__API_URL__
+ * หน้าเว็บถูก render ใน sandboxed iframe (script.googleusercontent.com) คนละ origin
+ * กับ /exec จึงอ่าน URL จาก location เองไม่ได้ — และถ้าฉีดจากฝั่งนี้ frontend build
+ * ที่ไม่มี VITE_API_URL ก็ยังเรียก API ได้ (กันเคส build ในเครื่องโดยไม่มี .env)
+ */
+function servePage_() {
+  let inject = '';
+  try {
+    const url = ScriptApp.getService().getUrl();
+    if (url) inject = '<script>window.__API_URL__=' + JSON.stringify(url) + ';</script>';
+  } catch (err) {
+    Logger.log('ไม่สามารถอ่าน web app URL: ' + (err.message || err));
+  }
+  const content = HtmlService.createHtmlOutputFromFile('Index').getContent();
+  const html = content.indexOf('<head>') >= 0
+    ? content.replace('<head>', '<head>' + inject)
+    : inject + content;
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Home Love — งานบ้านเก็บแต้ม')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
 }
 
 function doPost(e) {
