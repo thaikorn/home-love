@@ -18,13 +18,15 @@ const TAB = {
   PointAdjustments: 'PointAdjustments',
   Config: 'Config',
   Sessions: 'Sessions',
+  Quests: 'Quests',
 };
 
 // หัวคอลัมน์ของแต่ละ tab (ลำดับสำคัญ)
 const SCHEMA = {
+  // shields = โล่กันสตรีคขาด (ต่อท้ายเสมอ ห้ามแทรกกลาง)
   Children: [
     'id', 'name', 'avatar', 'color', 'pinHash',
-    'points', 'streakCurrent', 'streakMax', 'lastStreakDate', 'active',
+    'points', 'streakCurrent', 'streakMax', 'lastStreakDate', 'active', 'shields',
   ],
   Parents: [
     'id', 'username', 'passwordHash', 'email',
@@ -60,6 +62,11 @@ const SCHEMA = {
   Config: [
     'key', 'value',
   ],
+  // บันทึกรางวัลภารกิจประจำวัน/บอส — กันแจกซ้ำในรอบเดียวกัน
+  // kind: 'daily' (periodKey = วันที่) | 'boss' (periodKey = วันจันทร์ของสัปดาห์)
+  Quests: [
+    'id', 'childId', 'kind', 'periodKey', 'points', 'awardedAt',
+  ],
   Sessions: [
     'token', 'role', 'refId', 'name', 'expiresAt',
   ],
@@ -82,6 +89,7 @@ const TEXT_COLS = {
   Badges: ['awardedAt'],
   PointAdjustments: ['createdAt'],
   Config: ['value'],
+  Quests: ['periodKey', 'awardedAt'],
   Sessions: ['token', 'expiresAt'],
 };
 
@@ -95,6 +103,16 @@ const DEFAULT_CONFIG = {
   // โบนัสทำต่อเนื่อง แบบขั้นบันได "จำนวนวัน:% ที่เพิ่ม" — ใช้ขั้นสูงสุดที่ถึงแล้ว
   streakBonusTiers: '3:10,7:20,14:30,30:50',
   xpPerLevel: '200',       // แต้มสะสม (XP) ต่อ 1 เลเวล
+  // ภารกิจประจำวัน: ทำครบกี่งาน ได้โบนัสกี่แต้ม
+  dailyQuestTarget: '3',
+  dailyQuestBonus: '20',
+  streakShieldCost: '30',  // ราคาโล่กันสตรีคขาด (แต้ม)
+  streakShieldMax: '2',    // ถือโล่ได้สูงสุดกี่อัน
+  // บอสประจำสัปดาห์: พี่น้องช่วยกันสะสมแต้มรวมให้ถึงเป้า
+  bossName: 'ราชาความรก',
+  bossEmoji: '👹',
+  bossTargetPoints: '300',
+  bossReward: '30',        // แต้มที่เด็กแต่ละคนได้เมื่อล้มบอสสำเร็จ
   sessionHours: '720',     // อายุ session (ชั่วโมง) = 30 วัน
 };
 

@@ -40,6 +40,23 @@ function isBeforeCutoff_(tw, ref) {
   return hmToMin_(ref.hm) < hmToMin_(tw.cutoff);
 }
 
+// วันจันทร์ของสัปดาห์ที่มี dateStr ('yyyy-MM-dd') — ใช้เป็นคีย์รอบสัปดาห์ของบอส
+function mondayOf_(dateStr) {
+  const p = String(dateStr).split('-').map(Number);
+  const d = new Date(Date.UTC(p[0], (p[1] || 1) - 1, p[2] || 1));
+  const dow = (d.getUTCDay() + 6) % 7; // 0 = จันทร์
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+
+// วันก่อนหน้า n วันของ dateStr
+function addDaysStr_(dateStr, n) {
+  const p = String(dateStr).split('-').map(Number);
+  const d = new Date(Date.UTC(p[0], (p[1] || 1) - 1, p[2] || 1));
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 // รายการช่วงเวลาที่เปิดอยู่ตอนนี้
 function openWindowsNow_() {
   const ref = now_();

@@ -199,8 +199,12 @@ function applyTextFormats_() {
 function ensureSchemaColumns_() {
   const ss = ss_();
   Object.keys(SCHEMA).forEach(function (tab) {
-    const sh = ss.getSheetByName(tab);
-    if (!sh) return;
+    let sh = ss.getSheetByName(tab);
+    if (!sh) {                      // tab ที่เพิ่มใหม่ใน SCHEMA — สร้างให้เลย
+      sh = ss.insertSheet(tab);
+      sh.setFrozenRows(1);
+      Logger.log('สร้าง tab ' + tab + ' ใหม่');
+    }
     const cols = SCHEMA[tab];
     const header = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), cols.length)).getValues()[0];
     let changed = false;
@@ -216,7 +220,7 @@ function ensureSchemaColumns_() {
 
 // ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
 // เปลี่ยนเลขเวอร์ชันเมื่อมี migration ใหม่ที่ต้องรันซ้ำ
-const REPAIR_FLAG_ = 'MIGRATION_V2';
+const REPAIR_FLAG_ = 'MIGRATION_V3';
 function ensureRepaired_() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty(REPAIR_FLAG_)) return;

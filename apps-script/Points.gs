@@ -57,11 +57,28 @@ function childXp_(childId) {
   return xp;
 }
 
+// ยศตามเลเวล — ใช้ยศสูงสุดที่ถึงแล้ว
+const TITLES = [
+  { lv: 1, name: 'ผู้ฝึกหัด', ic: '🥚' },
+  { lv: 3, name: 'เด็กขยัน', ic: '🐣' },
+  { lv: 5, name: 'นักรบบ้าน', ic: '🗡️' },
+  { lv: 8, name: 'จ่าฝูง', ic: '🛡️' },
+  { lv: 12, name: 'อัศวินงานบ้าน', ic: '⚔️' },
+  { lv: 18, name: 'แม่ทัพ', ic: '👑' },
+  { lv: 25, name: 'ตำนานบ้านนี้', ic: '🐉' },
+];
+function titleForLevel_(level) {
+  let t = TITLES[0];
+  TITLES.forEach(function (x) { if (level >= x.lv) t = x; });
+  return t;
+}
+
 // เลเวลจาก XP — ทุก xpPerLevel แต้ม = 1 เลเวล
 function levelFromXp_(xp, cfg) {
   const per = Math.max(1, parseInt((cfg && cfg.xpPerLevel) || '200', 10));
   const total = Math.max(0, Number(xp) || 0);
   const level = Math.floor(total / per) + 1;
+  const title = titleForLevel_(level);
   return {
     level: level,
     xp: total,
@@ -69,6 +86,8 @@ function levelFromXp_(xp, cfg) {
     xpForLevel: per,
     xpToNext: level * per - total,
     nextLevelAt: level * per,
+    title: title.name,
+    titleIcon: title.ic,
   };
 }
 
@@ -93,19 +112,29 @@ function addPoints_(childId, delta, enforceFloor) {
 }
 
 // อัปเดตสตรีค+มอบเหรียญ เมื่ออนุมัติงาน "งานแรกของวัน" (6.4)
+// ถ้าขาดไป 1 วันแต่มีโล่ 🛡️ จะใช้โล่กันสตรีคขาดให้อัตโนมัติ
 function bumpStreak_(child, todayStr, cfg) {
   const last = toDateStr_(child.lastStreakDate); // อาจถูก Sheet แปลงเป็น Date มาก่อน
-  if (last === todayStr) return { child: child, newBadges: [] }; // วันนี้ได้สตรีคแล้ว
+  if (last === todayStr) return { child: child, newBadges: [], shieldUsed: false }; // วันนี้ได้สตรีคแล้ว
 
-  const yesterday = Utilities.formatDate(
-    new Date(new Date(todayStr + 'T00:00:00').getTime() - 86400000),
-    TZ_(), 'yyyy-MM-dd'
-  );
+  const yesterday = addDaysStr_(todayStr, -1);
+  const dayBefore = addDaysStr_(todayStr, -2);
   let cur = Number(child.streakCurrent) || 0;
-  cur = (last === yesterday) ? cur + 1 : 1;
+  let shields = Number(child.shields) || 0;
+  let shieldUsed = false;
+
+  if (last === yesterday) {
+    cur = cur + 1;
+  } else if (last === dayBefore && shields > 0) {
+    cur = cur + 1; shields -= 1; shieldUsed = true;   // ขาดไปวันเดียว — ใช้โล่กันไว้
+  } else {
+    cur = 1;
+  }
   const max = Math.max(Number(child.streakMax) || 0, cur);
 
-  update_(TAB.Children, child.id, { streakCurrent: cur, streakMax: max, lastStreakDate: todayStr });
+  const patch = { streakCurrent: cur, streakMax: max, lastStreakDate: todayStr };
+  if (shieldUsed) patch.shields = shields;
+  update_(TAB.Children, child.id, patch);
 
   // มอบเหรียญตามเกณฑ์ (กันซ้ำ)
   const thresholds = String(cfg.streakBadges).split(',').map(function (s) { return parseInt(s.trim(), 10); });
@@ -120,7 +149,103 @@ function bumpStreak_(child, todayStr, cfg) {
       newBadges.push(kind);
     }
   });
-  return { child: Object.assign({}, child, { streakCurrent: cur, streakMax: max, lastStreakDate: todayStr }), newBadges: newBadges };
+  return {
+    child: Object.assign({}, child, { streakCurrent: cur, streakMax: max, lastStreakDate: todayStr, shields: shields }),
+    newBadges: newBadges,
+    shieldUsed: shieldUsed,
+  };
+}
+
+// ============ ภารกิจประจำวัน / บอสประจำสัปดาห์ ============
+
+// เคยแจกรางวัลรอบนี้ให้เด็กคนนี้แล้วหรือยัง
+function questAwarded_(childId, kind, periodKey) {
+  return where_(TAB.Quests, function (q) {
+    return String(q.childId) === String(childId) && String(q.kind) === kind &&
+      String(q.periodKey) === String(periodKey);
+  }).length > 0;
+}
+
+function recordQuest_(childId, kind, periodKey, points) {
+  insert_(TAB.Quests, {
+    id: newId_('qst'), childId: childId, kind: kind, periodKey: periodKey,
+    points: points, awardedAt: new Date().toISOString(),
+  });
+}
+
+// จำนวนงานที่ "ผ่าน" ของเด็กคนนี้ในวันที่กำหนด
+function approvedCountOn_(childId, dateStr) {
+  return where_(TAB.Submissions, function (x) {
+    if (x.status !== SUB_STATUS.APPROVED) return false;
+    if (String(x.submittedBy) !== String(childId) &&
+        toArr_(x.teamMembers).indexOf(String(childId)) < 0) return false;
+    return Utilities.formatDate(new Date(toIso_(x.submittedAt)), TZ_(), 'yyyy-MM-dd') === dateStr;
+  }).length;
+}
+
+// สถานะภารกิจประจำวันของเด็ก
+function dailyQuestState_(childId, dateStr, cfg) {
+  const target = Math.max(1, parseInt(cfg.dailyQuestTarget || '3', 10));
+  const bonus = Math.max(0, parseInt(cfg.dailyQuestBonus || '0', 10));
+  const done = approvedCountOn_(childId, dateStr);
+  return {
+    target: target, bonus: bonus, done: Math.min(done, target),
+    claimed: questAwarded_(childId, 'daily', dateStr),
+  };
+}
+
+// แจกโบนัสภารกิจประจำวันถ้าครบเป้าและยังไม่เคยได้ — คืนแต้มที่แจก (0 = ไม่แจก)
+function awardDailyQuest_(childId, dateStr, cfg) {
+  const st = dailyQuestState_(childId, dateStr, cfg);
+  if (st.done < st.target || st.claimed || st.bonus <= 0) return 0;
+  addPoints_(childId, st.bonus, false);
+  recordQuest_(childId, 'daily', dateStr, st.bonus);
+  return st.bonus;
+}
+
+// แต้มรวมของเด็กทุกคนในสัปดาห์ (นับจากงานที่ผ่าน) — ใช้เป็น "ดาเมจ" ใส่บอส
+function weekPointsByChild_(mondayStr) {
+  const until = addDaysStr_(mondayStr, 7);
+  const byChild = {};
+  where_(TAB.Submissions, function (x) { return x.status === SUB_STATUS.APPROVED; })
+    .forEach(function (x) {
+      const d = Utilities.formatDate(new Date(toIso_(x.submittedAt)), TZ_(), 'yyyy-MM-dd');
+      if (d < mondayStr || d >= until) return;
+      const pts = Number(x.pointsPerPerson) || 0;
+      toArr_(x.teamMembers).forEach(function (cid) { byChild[cid] = (byChild[cid] || 0) + pts; });
+    });
+  return byChild;
+}
+
+// สถานะบอสประจำสัปดาห์
+function bossState_(dateStr, cfg) {
+  const monday = mondayOf_(dateStr);
+  const byChild = weekPointsByChild_(monday);
+  let total = 0;
+  Object.keys(byChild).forEach(function (k) { total += byChild[k]; });
+  const target = Math.max(1, parseInt(cfg.bossTargetPoints || '300', 10));
+  return {
+    name: cfg.bossName || 'บอส', emoji: cfg.bossEmoji || '👹',
+    weekStart: monday, target: target, damage: total,
+    hpLeft: Math.max(0, target - total),
+    percent: Math.min(100, Math.round((total / target) * 100)),
+    defeated: total >= target,
+    reward: Math.max(0, parseInt(cfg.bossReward || '0', 10)),
+  };
+}
+
+// ล้มบอสสำเร็จ → แจกรางวัลให้เด็กที่ยังเปิดใช้งานทุกคน (ครั้งเดียวต่อสัปดาห์ต่อคน)
+function awardBossIfDefeated_(dateStr, cfg) {
+  const boss = bossState_(dateStr, cfg);
+  if (!boss.defeated || boss.reward <= 0) return [];
+  const winners = [];
+  where_(TAB.Children, function (c) { return toBool_(c.active); }).forEach(function (c) {
+    if (questAwarded_(c.id, 'boss', boss.weekStart)) return;
+    addPoints_(c.id, boss.reward, false);
+    recordQuest_(c.id, 'boss', boss.weekStart, boss.reward);
+    winners.push({ id: c.id, name: c.name, points: boss.reward });
+  });
+  return winners;
 }
 
 // ปรับแต้มด้วยมือ (6.8) — บังคับเหตุผล, ห้ามติดลบ, บันทึกลง PointAdjustments

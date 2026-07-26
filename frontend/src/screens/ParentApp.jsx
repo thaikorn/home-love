@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
 import { useToast, Loading, Empty, Modal, StatusChip, HudNav, fmtDate } from '../components.jsx';
+import { confetti, play } from '../fx.js';
 import ParentSettings from './ParentSettings.jsx';
 
 const TABS = [
@@ -77,8 +78,18 @@ function ReviewModal({ sub, onClose, onDone }) {
         ? 'อนุมัติแล้ว · ' + kids.map((k) => `${k.name} +${k.points}${k.streakBonusPercent ? ` (สตรีค ${k.streak} วัน +${k.streakBonusPercent}%)` : ''}`).join(' · ')
         : `อนุมัติแล้ว +${r.pointsPerPerson} แต้ม/คน`;
       if (r.windowMultiplier > 1) msg += ` · ตัวคูณวันนี้ ×${r.windowMultiplier}`;
+      const daily = kids.filter((k) => k.dailyQuestBonus > 0);
+      if (daily.length) msg += ` · ภารกิจวัน +${daily[0].dailyQuestBonus} 📜`;
+      if (kids.some((k) => k.shieldUsed)) msg += ' · ใช้โล่กันสตรีค 🛡️';
       const nb = Object.values(r.newBadges || {}).flat();
       if (nb.length) msg += ` · ได้เหรียญใหม่ 🏅`;
+      const won = r.bossWinners || [];
+      if (won.length) {
+        confetti(140, 2.2); play('boss');
+        msg += ` · ⚔️ ล้มบอสสำเร็จ! ทุกคนได้ +${won[0].points}`;
+      } else {
+        confetti(60, 1.2); play('success');
+      }
       toast(msg);
       onDone();
     } catch (e) { toast(e.message, 'err'); setBusy(false); }
@@ -211,7 +222,7 @@ function PointsView() {
           <div className="grow">
             <div className="title">{c.avatar} {c.name} <span className="chip ok">LV.{(c.level || {}).level ?? 1}</span> {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
             <div className="sub">🔥 ทำต่อเนื่อง {c.streakCurrent} วัน (สูงสุด {c.streakMax}){c.streakBonusPercent > 0 ? ` · โบนัส +${c.streakBonusPercent}%` : ''}</div>
-            <div className="sub">XP รวม {(c.level || {}).xp ?? 0} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล</div>
+            <div className="sub">{(c.level || {}).titleIcon} {(c.level || {}).title} · XP รวม {(c.level || {}).xp ?? 0} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล{c.shields > 0 ? ` · 🛡️ ${c.shields}` : ''}</div>
           </div>
           <div className="right">
             <div className="num" style={{ fontWeight: 800, color: 'var(--pink-dark)' }}>{c.points}</div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call, fileToDataUrl } from '../api.js';
 import { useToast, Loading, Empty, Modal, StatusChip, HudNav, fmtDate } from '../components.jsx';
+import { confetti, floatText, play, checkLevelUp, soundOn, toggleSound } from '../fx.js';
 
 const TABS = [
   { key: 'home', label: 'หน้าหลัก', ic: '🏠' },
@@ -19,7 +20,10 @@ export default function ChildApp({ session, onLogout }) {
     <div className="app">
       <div className="topbar">
         <div><h1>สวัสดี {session.name} 👋</h1><div className="sub">พร้อมลุยภารกิจหรือยัง?</div></div>
-        <button className="btn gray sm" onClick={onLogout}>ออก</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <SoundToggle />
+          <button className="btn gray sm" onClick={onLogout}>ออก</button>
+        </div>
       </div>
       <div className="app-body">
         {tab === 'home' && <Home />}
@@ -33,11 +37,37 @@ export default function ChildApp({ session, onLogout }) {
   );
 }
 
+function SoundToggle() {
+  const [on, setOn] = useState(soundOn());
+  return (
+    <button className="btn gray sm" onClick={() => setOn(toggleSound())} title="เปิด/ปิดเสียง">
+      {on ? '🔊' : '🔇'}
+    </button>
+  );
+}
+
 function Home() {
   const toast = useToast();
   const [st, setSt] = useState(null);
-  useEffect(() => { call('child.state').then(setSt).catch((e) => toast(e.message, 'err')); }, [toast]);
+  const [board, setBoard] = useState([]);
+  const load = useCallback(() => {
+    call('child.state').then((x) => {
+      setSt(x);
+      checkLevelUp(x.id, x.level && x.level.level, x.level && x.level.title); // ขึ้นเลเวล = ฉลองเต็มจอ
+    }).catch((e) => toast(e.message, 'err'));
+    call('child.leaderboard').then(setBoard).catch(() => {});
+  }, [toast]);
+  useEffect(load, [load]);
   if (!st) return <Loading />;
+
+  async function buyShield() {
+    try {
+      const r = await call('child.buyShield');
+      play('coin'); floatText('🛡️ +1', { className: 'cool' });
+      toast(`ได้โล่แล้ว! มีโล่ ${r.shields} อัน`);
+      load();
+    } catch (e) { play('error'); toast(e.message, 'err'); }
+  }
   const lv = st.level || { level: 1, xpInLevel: 0, xpForLevel: 200, xpToNext: 200, xp: 0 };
   const lvPct = Math.min(100, Math.round((lv.xpInLevel / lv.xpForLevel) * 100));
   const nextTier = st.nextStreakTier;
@@ -49,7 +79,7 @@ function Home() {
         <div className="levelbar">
           <div className="lv"><small>LV</small><b>{lv.level}</b></div>
           <div className="grow">
-            <div className="bar-label"><span>{st.avatar} {st.name}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
+            <div className="bar-label"><span>{st.avatar} {st.name} · {lv.titleIcon} {lv.title}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
             <div className="bar"><i style={{ width: lvPct + '%' }} /></div>
             <div className="muted" style={{ marginTop: 4 }}>อีก {lv.xpToNext} แต้ม → เลเวล {lv.level + 1}</div>
           </div>
@@ -78,6 +108,66 @@ function Home() {
           </>
         )}
       </div>
+      {st.boss && (
+        <div className="card boss-card">
+          <h2>🐉 บอสประจำสัปดาห์</h2>
+          <div className={'face' + (st.boss.defeated ? ' down' : '')}>{st.boss.emoji}</div>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>{st.boss.name}</div>
+          <div className="bar-label">
+            <span>{st.boss.defeated ? 'ล้มบอสสำเร็จ! 🎉' : 'HP เหลือ ' + st.boss.hpLeft}</span>
+            <span>{st.boss.damage}/{st.boss.target}</span>
+          </div>
+          <div className="bar hp"><i style={{ width: (100 - st.boss.percent) + '%' }} /></div>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            {st.boss.defeated
+              ? `ทุกคนได้ +${st.boss.reward} แต้ม เจอกันใหม่สัปดาห์หน้า!`
+              : `ช่วยกันทั้งบ้านสะสมแต้มให้ครบ ${st.boss.target} แล้วทุกคนได้ +${st.boss.reward} แต้ม`}
+          </p>
+        </div>
+      )}
+
+      {st.dailyQuest && st.dailyQuest.bonus > 0 && (
+        <div className="card">
+          <h2>📜 ภารกิจประจำวัน</h2>
+          <div className="bar-label">
+            <span>ทำงานให้ผ่านครบ {st.dailyQuest.target} ชิ้นวันนี้ → +{st.dailyQuest.bonus} แต้ม</span>
+            <span>{st.dailyQuest.done}/{st.dailyQuest.target}</span>
+          </div>
+          <div className="bar gold"><i style={{ width: Math.round((st.dailyQuest.done / st.dailyQuest.target) * 100) + '%' }} /></div>
+          {st.dailyQuest.claimed && <p className="muted" style={{ marginBottom: 0 }}>รับโบนัสวันนี้แล้ว ✅</p>}
+        </div>
+      )}
+
+      <div className="card">
+        <h2>🛡️ โล่กันสตรีคขาด</h2>
+        <p className="muted">ถ้าลืมทำงานไป 1 วัน โล่จะกันไม่ให้สตรีคหลุด (ใช้อัตโนมัติ)</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 30 }}>{'🛡️'.repeat(st.shields) || '—'}</div>
+          <div className="grow" style={{ flex: 1 }}>มีอยู่ {st.shields}/{st.shieldMax} อัน</div>
+          <button className="btn sm" disabled={st.shields >= st.shieldMax || st.points < st.shieldCost} onClick={buyShield}>
+            ซื้อ {st.shieldCost} แต้ม
+          </button>
+        </div>
+      </div>
+
+      {board.length > 1 && (
+        <div className="card">
+          <h2>🏆 กระดานผู้นำสัปดาห์นี้</h2>
+          {board.map((c, i) => (
+            <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
+              <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
+              <div className="face">{c.avatar}</div>
+              <div className="who">
+                <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
+                <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
+              </div>
+              <div className="pts">{c.weekPoints}</div>
+            </div>
+          ))}
+          <p className="muted" style={{ marginBottom: 0 }}>นับแต้มที่ทำได้ตั้งแต่วันจันทร์</p>
+        </div>
+      )}
+
       <div className="card">
         <h2>🏅 เหรียญที่สะสมได้</h2>
         {st.badges.length === 0 ? <Empty text="ยังไม่มีเหรียญ — ทำงานต่อเนื่องเพื่อรับเหรียญ!" /> : (
@@ -126,7 +216,7 @@ function Chores({ session }) {
           </div>
         )}
       </div>
-      {sel && <SubmitModal chore={sel} session={session} onClose={() => setSel(null)} onDone={() => { setSel(null); load(); toast('ส่งงานแล้ว รอผู้ปกครองตรวจ ✅'); }} />}
+      {sel && <SubmitModal chore={sel} session={session} onClose={() => setSel(null)} onDone={() => { setSel(null); load(); confetti(70, 1.3); play('success'); floatText('ส่งงานแล้ว!'); toast('ส่งงานแล้ว รอผู้ปกครองตรวจ ✅'); }} />}
     </div>
   );
 }
@@ -226,6 +316,7 @@ function Shop() {
     if (points < r.cost) return toast('แต้มยังไม่พอ', 'err');
     try {
       await call('child.redeem', { rewardId: r.id });
+      play('coin'); floatText(`-${r.cost} ◆`, { className: 'cool' });
       toast('ขอแลกแล้ว รอผู้ปกครองอนุมัติ 🎁');
       load();
     } catch (e) { toast(e.message, 'err'); }

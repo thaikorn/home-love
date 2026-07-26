@@ -313,6 +313,60 @@ textarea { min-height: 80px; resize: vertical; }
 .item .title { font-weight: 800; }
 .item .sub { font-size: 12px; color: var(--muted); }
 
+/* เอฟเฟกต์: ตัวเลขลอยขึ้น */
+.fx-float {
+  position: fixed; left: 50%; top: 42%; transform: translateX(-50%);
+  z-index: 90; pointer-events: none;
+  font-size: 34px; font-weight: 900; color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 201, 60, 0.8), 0 3px 0 #7a4a00;
+  animation: floatup 1.5s ease-out forwards;
+}
+.fx-float.cool { color: var(--neon); text-shadow: 0 0 18px rgba(56,232,255,0.8), 0 3px 0 #08506a; }
+@keyframes floatup {
+  0% { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.7); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.15); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-90px) scale(1); }
+}
+
+/* เอฟเฟกต์: LEVEL UP เต็มจอ */
+.fx-levelup {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center;
+  background: rgba(6, 8, 26, 0.72); backdrop-filter: blur(3px);
+  animation: fadein 0.2s ease;
+}
+.fx-levelup .box {
+  text-align: center; padding: 28px 46px; border-radius: 22px;
+  background: linear-gradient(180deg, #2f2160 0%, #191c48 100%);
+  border: 3px solid var(--gold);
+  box-shadow: 0 0 50px rgba(255, 201, 60, 0.55);
+  animation: zoomin 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.fx-levelup .lbl { font-size: 22px; font-weight: 900; letter-spacing: 3px; color: var(--gold); }
+.fx-levelup .lv {
+  font-size: 84px; font-weight: 900; line-height: 1; color: #fff;
+  text-shadow: 0 0 30px rgba(255, 201, 60, 0.9);
+}
+.fx-levelup .ttl { margin-top: 6px; font-size: 17px; font-weight: 800; color: var(--neon); }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes zoomin { from { transform: scale(0.5) rotate(-6deg); opacity: 0; } }
+
+/* แถบ HP บอส */
+.boss-card { text-align: center; }
+.boss-card .face { font-size: 56px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6)); animation: bossbob 2.6s ease-in-out infinite; }
+.boss-card .face.down { filter: grayscale(1) opacity(0.6); animation: none; }
+@keyframes bossbob { 50% { transform: translateY(-6px) rotate(-3deg); } }
+.bar.hp > i { background: linear-gradient(90deg, #ff5d6c, #ff9f43); box-shadow: 0 0 14px rgba(255,93,108,0.6); }
+
+/* กระดานผู้นำ */
+.rank { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.rank:last-child { border-bottom: none; }
+.rank .pos { width: 30px; text-align: center; font-size: 18px; font-weight: 900; color: var(--muted); }
+.rank.top .pos { color: var(--gold); text-shadow: 0 0 10px rgba(255,201,60,0.7); }
+.rank .face { font-size: 30px; }
+.rank .who { flex: 1; min-width: 0; }
+.rank .who b { font-weight: 800; }
+.rank .pts { font-weight: 900; color: var(--gold); font-size: 18px; }
+
 /* Toast */
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 110px; z-index: 60;

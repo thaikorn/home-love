@@ -29,6 +29,11 @@ function childState_(childId) {
     streakMax: Number(child.streakMax) || 0,
     streakBonusPercent: streakBonusPct_(streak, cfg),
     nextStreakTier: nextStreakTier_(streak, cfg), // {days, percent} หรือ null ถ้าถึงขั้นสูงสุดแล้ว
+    shields: Number(child.shields) || 0,
+    shieldCost: Math.max(0, parseInt(cfg.streakShieldCost || '0', 10)),
+    shieldMax: Math.max(0, parseInt(cfg.streakShieldMax || '0', 10)),
+    dailyQuest: dailyQuestState_(child.id, now_().date, cfg),
+    boss: bossState_(now_().date, cfg),
     badges: badges,
   };
 }
@@ -124,6 +129,39 @@ const CHILD_ACTIONS = {
         toArr_(x.teamMembers).indexOf(String(s.refId)) >= 0;
     });
     return mine.map(mapSubmission_).sort(byNewest_('submittedAt'));
+  },
+
+  // กระดานผู้นำพี่น้อง — เรียงตามแต้มที่ทำได้สัปดาห์นี้
+  'child.leaderboard': function () {
+    const cfg = getConfig_();
+    const week = weekPointsByChild_(mondayOf_(now_().date));
+    return where_(TAB.Children, function (c) { return toBool_(c.active); })
+      .map(function (c) {
+        const lv = levelFromXp_(childXp_(c.id), cfg);
+        return {
+          id: c.id, name: c.name, avatar: c.avatar, color: c.color,
+          weekPoints: week[c.id] || 0, points: Number(c.points) || 0,
+          streakCurrent: Number(c.streakCurrent) || 0,
+          level: lv.level, title: lv.title, titleIcon: lv.titleIcon,
+        };
+      })
+      .sort(function (a, b) { return b.weekPoints - a.weekPoints || b.points - a.points; });
+  },
+
+  // ซื้อโล่กันสตรีคขาดด้วยแต้ม
+  'child.buyShield': function (s) {
+    return withLock_(function () {
+      const cfg = getConfig_();
+      const cost = Math.max(0, parseInt(cfg.streakShieldCost || '0', 10));
+      const max = Math.max(0, parseInt(cfg.streakShieldMax || '0', 10));
+      const child = findById_(TAB.Children, s.refId);
+      if (!child) throw new Error('ไม่พบเด็ก');
+      const have = Number(child.shields) || 0;
+      if (have >= max) throw new Error('มีโล่ครบสูงสุดแล้ว (' + max + ' อัน)');
+      addPoints_(s.refId, -cost, true); // แต้มไม่พอจะโยน error เอง
+      update_(TAB.Children, s.refId, { shields: have + 1 });
+      return { shields: have + 1, points: Number(findById_(TAB.Children, s.refId).points) || 0 };
+    });
   },
 
   'child.rewards': function () {
@@ -234,11 +272,16 @@ const PARENT_ACTIONS = {
         const streak = Number(res.child.streakCurrent) || 0;
         const got = applyStreakBonus_(perPerson, streak, cfg);
         addPoints_(cid, got.points, false);
+        const dailyBonus = awardDailyQuest_(cid, today, cfg);
         perChild.push({
           id: cid, name: child.name, points: got.points,
           streak: streak, streakBonusPercent: got.percent,
+          shieldUsed: res.shieldUsed, dailyQuestBonus: dailyBonus,
         });
       });
+
+      // บอสประจำสัปดาห์: ถ้าดาเมจรวมถึงเป้าแล้ว แจกรางวัลให้ทุกคน (ครั้งเดียว/สัปดาห์)
+      const bossWinners = awardBossIfDefeated_(today, cfg);
 
       update_(TAB.Submissions, sub.id, {
         status: SUB_STATUS.APPROVED, quality: quality, pointsPerPerson: perPerson,
@@ -248,6 +291,7 @@ const PARENT_ACTIONS = {
         pointsPerPerson: perPerson, onTime: onTime, teamSize: teamSize,
         windowMultiplier: windowMultiplierFor_(tw, dow),
         perChild: perChild, newBadges: badgesByChild,
+        boss: bossState_(today, cfg), bossWinners: bossWinners,
       };
     });
   },
@@ -345,6 +389,7 @@ const PARENT_ACTIONS = {
         points: Number(c.points) || 0, streakCurrent: Number(c.streakCurrent) || 0, streakMax: Number(c.streakMax) || 0,
         streakBonusPercent: streakBonusPct_(Number(c.streakCurrent) || 0, cfg),
         level: levelFromXp_(childXp_(c.id), cfg),
+        shields: Number(c.shields) || 0,
       };
     });
   },
