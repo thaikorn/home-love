@@ -99,6 +99,70 @@ function createParent(username, password, email) {
   return parent.id;
 }
 
+/**
+ * diagnoseAuth() — ตรวจสภาพระบบล็อกอิน (ไม่แสดงรหัส/แฮชจริง)
+ * รันจาก editor แล้วดูผลใน Execution log
+ */
+function diagnoseAuth() {
+  const secret = PropertiesService.getScriptProperties().getProperty('SECRET') || '';
+  Logger.log('SECRET: ' + (secret ? 'มีอยู่ (ยาว ' + secret.length + ' ตัว)' : '❌ ไม่มี — ล็อกอินจะไม่ผ่านทุกกรณี'));
+
+  const parents = readAll_(TAB.Parents);
+  Logger.log('ผู้ปกครอง ' + parents.length + ' คน:');
+  parents.forEach(function (p) {
+    const h = String(p.passwordHash || '');
+    Logger.log('  username="' + p.username + '" | แฮช ' + h.length + ' ตัว | ' +
+      (/^[0-9a-f]{64}$/.test(h) ? 'รูปแบบถูกต้อง' : '❌ รูปแบบผิด (ต้องเป็น hex 64 ตัว) — ต้องรีเซ็ตรหัส'));
+  });
+
+  const children = readAll_(TAB.Children);
+  Logger.log('เด็ก ' + children.length + ' คน:');
+  children.forEach(function (c) {
+    const h = String(c.pinHash || '');
+    Logger.log('  "' + c.name + '" (' + c.id + ') | แฮช ' + h.length + ' ตัว | ' +
+      (/^[0-9a-f]{64}$/.test(h) ? 'รูปแบบถูกต้อง' : '❌ รูปแบบผิด — ต้องรีเซ็ต PIN'));
+  });
+  return 'ดูผลใน Execution log';
+}
+
+/**
+ * resetParentPassword() — ตั้งรหัสผ่านผู้ปกครองใหม่ (ใช้เมื่อลืมรหัส)
+ * แก้ 2 ค่าด้านล่างก่อนกด Run  ถ้ายังไม่มี username นี้จะสร้างใหม่ให้
+ */
+function resetParentPassword() {
+  const USERNAME = 'admin';
+  const NEW_PASSWORD = 'CHANGE_ME';   // <<< แก้เป็นรหัสใหม่ที่ต้องการก่อนกด Run
+
+  if (!NEW_PASSWORD || NEW_PASSWORD === 'CHANGE_ME') {
+    throw new Error('แก้ค่า NEW_PASSWORD ในฟังก์ชันก่อน แล้วกด Run อีกครั้ง');
+  }
+  const rows = where_(TAB.Parents, function (p) { return String(p.username) === USERNAME; });
+  if (!rows.length) {
+    createParent(USERNAME, NEW_PASSWORD, 'thaikorn@gmail.com');
+    Logger.log('ไม่พบ username "' + USERNAME + '" — สร้างใหม่พร้อมรหัสที่ตั้งให้แล้ว');
+    return 'created';
+  }
+  update_(TAB.Parents, rows[0].id, { passwordHash: hashSecret_(NEW_PASSWORD) });
+  Logger.log('ตั้งรหัสผ่านใหม่ให้ "' + USERNAME + '" แล้ว — ลองล็อกอินได้เลย');
+  return 'updated';
+}
+
+/**
+ * resetChildPin() — ตั้ง PIN เด็กใหม่ (ใช้เมื่อลืม PIN)
+ * แก้ 2 ค่าด้านล่างก่อนกด Run (ดูชื่อ/id เด็กได้จาก diagnoseAuth)
+ */
+function resetChildPin() {
+  const CHILD_NAME = 'พี่เหนือ';
+  const NEW_PIN = '1234';             // <<< แก้เป็น PIN 4 หลักที่ต้องการก่อนกด Run
+
+  if (!/^\d{4}$/.test(NEW_PIN)) throw new Error('PIN ต้องเป็นตัวเลข 4 หลัก');
+  const rows = where_(TAB.Children, function (c) { return String(c.name) === CHILD_NAME; });
+  if (!rows.length) throw new Error('ไม่พบเด็กชื่อ "' + CHILD_NAME + '" — รัน diagnoseAuth() ดูชื่อที่มีอยู่');
+  update_(TAB.Children, rows[0].id, { pinHash: hashSecret_(NEW_PIN) });
+  Logger.log('ตั้ง PIN ใหม่ให้ "' + CHILD_NAME + '" แล้ว');
+  return 'updated';
+}
+
 /** บังคับ number format ของคอลัมน์ข้อความล้วนทุก tab (กัน Sheet แปลงค่าตอนเขียน) */
 function applyTextFormats_() {
   const ss = ss_();
