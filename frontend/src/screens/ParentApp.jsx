@@ -75,7 +75,11 @@ function ReviewModal({ sub, onClose, onDone }) {
     setBusy(true);
     try {
       const r = await call('parent.approve', { submissionId: sub.id, quality });
-      let msg = `อนุมัติแล้ว +${r.pointsPerPerson} แต้ม/คน`;
+      const kids = r.perChild || [];
+      let msg = kids.length
+        ? 'อนุมัติแล้ว · ' + kids.map((k) => `${k.name} +${k.points}${k.streakBonusPercent ? ` (สตรีค ${k.streak} วัน +${k.streakBonusPercent}%)` : ''}`).join(' · ')
+        : `อนุมัติแล้ว +${r.pointsPerPerson} แต้ม/คน`;
+      if (r.windowMultiplier > 1) msg += ` · ตัวคูณวันนี้ ×${r.windowMultiplier}`;
       const nb = Object.values(r.newBadges || {}).flat();
       if (nb.length) msg += ` · ได้เหรียญใหม่ 🏅`;
       toast(msg);

@@ -3,16 +3,49 @@
  * ทุกฟังก์ชันที่เปลี่ยนแต้มจะถูกเรียกภายใต้ LockService (ดู Actions.gs)
  */
 
-// สูตรคำนวณแต้ม (6.1) — คืนจำนวนเต็ม (ปัดลง) ต่อคน
-function computePoints_(chore, tw, quality, onTime, teamSize, cfg) {
+/**
+ * ตัวคูณของช่วงเวลาสำหรับวันนั้นๆ (dow 1=จันทร์..7=อาทิตย์)
+ * bonusDays ว่าง = คูณทุกวันที่ช่วงเวลาเปิด, ถ้าระบุ = คูณเฉพาะวันที่ระบุ
+ */
+function windowMultiplierFor_(tw, dow) {
+  const mult = Number(tw.bonusMultiplier) || 1;
+  const bonusDays = toArr_(tw.bonusDays).map(Number);
+  if (!bonusDays.length) return mult;
+  return bonusDays.indexOf(Number(dow)) >= 0 ? mult : 1;
+}
+
+/**
+ * โบนัส % จากการทำต่อเนื่อง (สตรีค) แบบขั้นบันได — ใช้ขั้นสูงสุดที่ถึงแล้ว
+ * เช่น '3:10,7:20,14:30,30:50' → สตรีค 8 วัน = +20%
+ */
+function streakBonusPct_(streak, cfg) {
+  const s = Number(streak) || 0;
+  let pct = 0;
+  String((cfg && cfg.streakBonusTiers) || '').split(',').forEach(function (part) {
+    const kv = part.split(':');
+    const days = parseInt(kv[0], 10);
+    const p = parseFloat(kv[1]);
+    if (!isNaN(days) && !isNaN(p) && s >= days && p > pct) pct = p;
+  });
+  return pct;
+}
+
+// สูตรคำนวณแต้ม (6.1) — คืนจำนวนเต็ม (ปัดลง) ต่อคน "ก่อน" โบนัสสตรีคซึ่งเป็นของแต่ละคน
+function computePoints_(chore, tw, quality, onTime, teamSize, cfg, dow) {
   const latePct = configNum_(cfg, 'latePercent') / 100;   // 0.60
   const teamPct = configNum_(cfg, 'teamPercent') / 100;   // 0.70
   const base = Number(chore.basePoints) || 0;
   const q = Math.max(0, Math.min(100, Number(quality))) / 100;
   const timeMult = onTime ? 1.0 : latePct;
-  const bonus = Number(tw.bonusMultiplier) || 1.0;
+  const bonus = windowMultiplierFor_(tw, dow);
   const teamShare = teamSize > 1 ? teamPct : 1.0;
   return Math.floor(base * q * timeMult * bonus * teamShare);
+}
+
+// แต้มของเด็กคนหนึ่งหลังบวกโบนัสสตรีคของเขาเอง
+function applyStreakBonus_(basePoints, streak, cfg) {
+  const pct = streakBonusPct_(streak, cfg);
+  return { points: Math.floor(basePoints * (1 + pct / 100)), percent: pct };
 }
 
 // เพิ่มแต้มให้เด็ก (delta อาจติดลบ) — ไม่ให้ต่ำกว่า 0 ถ้า enforceFloor=true

@@ -77,6 +77,7 @@ function setup() {
   });
 
   // ซ่อมข้อมูลเดิมที่ Sheet เคยแปลงชนิดไป (ไม่ทำอะไรถ้าข้อมูลถูกอยู่แล้ว)
+  ensureSchemaColumns_();
   repairSheetTypes();
 
   Logger.log('setup() เสร็จ — สร้าง tab และ config เริ่มต้นแล้ว');
@@ -191,14 +192,38 @@ function applyTextFormats_() {
   });
 }
 
+/**
+ * เติมหัวคอลัมน์ที่เพิ่มใหม่ใน SCHEMA ให้ชีตที่มีอยู่แล้ว
+ * ปลอดภัยเพราะคอลัมน์ใหม่ "ต่อท้าย" เสมอ — แถวเดิมไม่เลื่อน ค่าใหม่เป็นว่าง
+ */
+function ensureSchemaColumns_() {
+  const ss = ss_();
+  Object.keys(SCHEMA).forEach(function (tab) {
+    const sh = ss.getSheetByName(tab);
+    if (!sh) return;
+    const cols = SCHEMA[tab];
+    const header = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), cols.length)).getValues()[0];
+    let changed = false;
+    for (let i = 0; i < cols.length; i++) {
+      if (String(header[i] || '') !== cols[i]) changed = true;
+    }
+    if (!changed) return;
+    if (sh.getMaxColumns() < cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), cols.length - sh.getMaxColumns());
+    sh.getRange(1, 1, 1, cols.length).setValues([cols]);
+    Logger.log('อัปเดตหัวคอลัมน์ของ ' + tab + ' แล้ว');
+  });
+}
+
 // ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
-const REPAIR_FLAG_ = 'REPAIR_TYPES_V1';
+// เปลี่ยนเลขเวอร์ชันเมื่อมี migration ใหม่ที่ต้องรันซ้ำ
+const REPAIR_FLAG_ = 'MIGRATION_V2';
 function ensureRepaired_() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty(REPAIR_FLAG_)) return;
   try {
     withLock_(function () {
       if (props.getProperty(REPAIR_FLAG_)) return;
+      ensureSchemaColumns_();
       applyTextFormats_();
       repairSheetTypes();
       props.setProperty(REPAIR_FLAG_, new Date().toISOString());

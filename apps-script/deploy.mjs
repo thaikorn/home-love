@@ -23,10 +23,10 @@ if (existsSync(STORE)) {
 let out;
 if (deploymentId) {
   // อัปเดต deployment เดิม → URL คงเดิม
-  out = run(`clasp deploy -i ${deploymentId} -d "${desc}"`);
+  out = run(`npx clasp deploy -i ${deploymentId} -d "${desc}"`);
 } else {
   // ครั้งแรก: สร้าง deployment ใหม่ แล้วจำ id ไว้
-  out = run(`clasp deploy -d "${desc}"`);
+  out = run(`npx clasp deploy -d "${desc}"`);
   const m = out.match(/-\s*(AKfyc\S+)\s*@/);
   if (m) {
     deploymentId = m[1];

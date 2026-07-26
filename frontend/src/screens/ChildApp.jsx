@@ -45,8 +45,20 @@ function Home() {
     <div>
       <div className="stats">
         <div className="stat"><div className="num">{st.points}</div><div className="lbl">แต้มสะสม</div></div>
-        <div className="stat"><div className="num">🔥{st.streakCurrent}</div><div className="lbl">สตรีคตอนนี้</div></div>
-        <div className="stat"><div className="num">{st.streakMax}</div><div className="lbl">สตรีคสูงสุด</div></div>
+        <div className="stat"><div className="num">🔥{st.streakCurrent}</div><div className="lbl">ทำต่อเนื่อง (วัน)</div></div>
+        <div className="stat"><div className="num">{st.streakMax}</div><div className="lbl">สถิติสูงสุด</div></div>
+      </div>
+      <div className="card">
+        <h2>โบนัสทำต่อเนื่อง 🔥</h2>
+        {st.streakBonusPercent > 0
+          ? <p>ตอนนี้ทำต่อเนื่อง <b>{st.streakCurrent} วัน</b> → ทุกงานที่ส่งได้แต้ม <b style={{ color: 'var(--pink-dark)' }}>+{st.streakBonusPercent}%</b> 🎉</p>
+          : <p className="muted">ทำงานให้ผ่านทุกวันติดกัน แล้วจะได้แต้มเพิ่มทุกงาน</p>}
+        {st.nextStreakTier && (
+          <p className="muted">
+            อีก <b>{st.nextStreakTier.days - st.streakCurrent} วัน</b> (ครบ {st.nextStreakTier.days} วัน)
+            จะได้เพิ่มเป็น +{st.nextStreakTier.percent}%
+          </p>
+        )}
       </div>
       <div className="card">
         <h2>เหรียญรางวัล 🏅</h2>
@@ -86,7 +98,10 @@ function Chores({ session }) {
               <button key={c.id + c.timeWindowId} className="tile" onClick={() => setSel(c)}>
                 <div className="emoji">{c.icon || '🧹'}</div>
                 <div className="name">{c.name}</div>
-                <div className="meta">{c.basePoints} แต้ม · {c.timeWindowName} (ถึง {c.endTime} น.)</div>
+                <div className="meta">
+                  {c.basePoints} แต้ม{c.multiplierToday > 1 && <b style={{ color: 'var(--pink-dark)' }}> ×{c.multiplierToday} วันนี้!</b>}
+                  {' · '}{c.timeWindowName} (ถึง {c.endTime} น.)
+                </div>
                 <div className="meta">{c.onTime ? `⏰ ทันเวลา — ส่งก่อน ${c.cutoff} น.` : `⚠️ เลย ${c.cutoff} น. แล้ว (ได้แต้มน้อยลง)`}</div>
               </button>
             ))}

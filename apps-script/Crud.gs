@@ -43,6 +43,17 @@ function validateTw_(p) {
   return { startTime: startTime, endTime: endTime, cutoff: cutoff };
 }
 
+/**
+ * เก็บเฉพาะวันที่อยู่ใน openDays (วันที่ช่วงเวลาเปิดทำ)
+ * ถ้าเลือกครบทุกวันที่เปิด = เท่ากับ "ทุกวัน" จึงเก็บเป็นว่างเพื่อความหมายเดียวกัน
+ */
+function subsetDays_(bonusDays, openDays) {
+  const open = (openDays || []).map(Number);
+  const picked = (bonusDays || []).map(Number).filter(function (d) { return open.indexOf(d) >= 0; });
+  if (!picked.length || picked.length === open.length) return [];
+  return picked.sort(function (a, b) { return a - b; });
+}
+
 const CRUD_ACTIONS = {
   // ---------- เด็ก ----------
   'parent.children.list': function () {
@@ -168,7 +179,8 @@ const CRUD_ACTIONS = {
       return {
         id: t.id, name: t.name,
         startTime: toHm_(t.startTime), endTime: toHm_(t.endTime), cutoff: toHm_(t.cutoff),
-        days: toArr_(t.days).map(Number), bonusMultiplier: Number(t.bonusMultiplier) || 1, active: toBool_(t.active),
+        days: toArr_(t.days).map(Number), bonusDays: toArr_(t.bonusDays).map(Number),
+        bonusMultiplier: Number(t.bonusMultiplier) || 1, active: toBool_(t.active),
       };
     });
   },
@@ -178,7 +190,8 @@ const CRUD_ACTIONS = {
     const days = (p.days && p.days.length) ? p.days : [1, 2, 3, 4, 5, 6, 7];
     const tw = {
       id: newId_('tw'), name: p.name, startTime: t.startTime, endTime: t.endTime, cutoff: t.cutoff,
-      days: fromArr_(days), bonusMultiplier: Number(p.bonusMultiplier) || 1, active: true,
+      days: fromArr_(days), bonusDays: fromArr_(subsetDays_(p.bonusDays, days)),
+      bonusMultiplier: Number(p.bonusMultiplier) || 1, active: true,
     };
     insert_(TAB.TimeWindows, tw);
     return { id: tw.id };
@@ -199,6 +212,11 @@ const CRUD_ACTIONS = {
     if (p.days !== undefined) {
       if (!p.days.length) throw new Error('เลือกวันในสัปดาห์อย่างน้อย 1 วัน');
       patch.days = fromArr_(p.days);
+    }
+    if (p.bonusDays !== undefined) {
+      const cur = findById_(TAB.TimeWindows, p.id) || {};
+      const openDays = p.days !== undefined ? p.days : toArr_(cur.days).map(Number);
+      patch.bonusDays = fromArr_(subsetDays_(p.bonusDays, openDays));
     }
     if (p.bonusMultiplier !== undefined) patch.bonusMultiplier = Number(p.bonusMultiplier) || 1;
     if (p.active !== undefined) patch.active = !!p.active;

@@ -308,8 +308,15 @@ function TimeWindowsCrud() {
         <div key={t.id} className="item">
           <div className="grow">
             <div className="title">{t.name} {!t.active && <span className="chip bad">ปิด</span>}</div>
-            <div className="sub">{t.startTime}–{t.endTime} น. · ส่งทันเวลาก่อน {t.cutoff} น. · โบนัส ×{t.bonusMultiplier}</div>
-            <div className="sub">{t.days.map((d) => (DAYS.find((x) => x[0] === String(d)) || [])[1]).join(' ')}</div>
+            <div className="sub">{t.startTime}–{t.endTime} น. · ส่งทันเวลาก่อน {t.cutoff} น.</div>
+            <div className="sub">
+              ทำได้: {t.days.map((d) => (DAYS.find((x) => x[0] === String(d)) || [])[1]).join(' ')}
+              {t.bonusMultiplier !== 1 && (
+                <> · ×{t.bonusMultiplier} {(t.bonusDays || []).length
+                  ? 'เฉพาะ ' + t.bonusDays.map((d) => (DAYS.find((x) => x[0] === String(d)) || [])[1]).join(' ')
+                  : 'ทุกวันที่ทำได้'}</>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="btn gray sm" onClick={() => setEdit(t)}>แก้</button>
@@ -330,15 +337,24 @@ function TwForm({ data, onClose, onDone }) {
   const [endTime, setEnd] = useState(data?.endTime || '10:00');
   const [cutoff, setCutoff] = useState(data?.cutoff || '09:00');
   const [days, setDays] = useState(data ? data.days.map(String) : ['1', '2', '3', '4', '5', '6', '7']);
+  const [bonusDays, setBonusDays] = useState(data ? (data.bonusDays || []).map(String) : []);
   const [bonus, setBonus] = useState(data?.bonusMultiplier || 1);
   const [active, setActive] = useState(data ? data.active : true);
   const [busy, setBusy] = useState(false);
 
-  function toggle(d) { setDays((s) => s.includes(d) ? s.filter((x) => x !== d) : [...s, d]); }
+  function toggle(d) {
+    setDays((s) => s.includes(d) ? s.filter((x) => x !== d) : [...s, d]);
+    setBonusDays((b) => b.filter((x) => x !== d || !days.includes(d))); // ปิดวันไหน ตัดวันนั้นออกจากวันคูณด้วย
+  }
+  function toggleBonusDay(d) { setBonusDays((s) => s.includes(d) ? s.filter((x) => x !== d) : [...s, d]); }
   async function save() {
+    if (!days.length) return toast('เลือกวันที่ทำได้อย่างน้อย 1 วัน', 'err');
     setBusy(true);
     try {
-      const p = { name, startTime, endTime, cutoff, days: days.map(Number), bonusMultiplier: Number(bonus) };
+      const p = {
+        name, startTime, endTime, cutoff,
+        days: days.map(Number), bonusDays: bonusDays.map(Number), bonusMultiplier: Number(bonus),
+      };
       if (isNew) await call('parent.timewindows.create', p);
       else await call('parent.timewindows.update', { id: data.id, ...p, active });
       onDone();
@@ -352,12 +368,29 @@ function TwForm({ data, onClose, onDone }) {
       <TimeSelect label="เริ่มทำได้ตั้งแต่" value={startTime} onChange={setStart} />
       <TimeSelect label="ทำได้ถึง" value={endTime} onChange={setEnd} />
       <TimeSelect label="ส่งทันเวลาก่อน" hint="— ส่งหลังเวลานี้ได้แต้มน้อยลง" value={cutoff} onChange={setCutoff} />
-      <label>วันในสัปดาห์</label>
+      <label>วันที่ทำได้ <span style={{ opacity: 0.7 }}>— ลูกจะเห็นงานเฉพาะวันที่เลือก</span></label>
       <div className="tag-days">
         {DAYS.map(([d, lbl]) => <button key={d} className={days.includes(d) ? 'on' : ''} onClick={() => toggle(d)}>{lbl}</button>)}
       </div>
-      <label>ตัวคูณโบนัส (เช่น วันหยุด 1.5)</label>
-      <input type="number" step="0.1" value={bonus} onChange={(e) => setBonus(e.target.value)} />
+
+      <label>ตัวคูณโบนัส <span style={{ opacity: 0.7 }}>— เช่น วันหยุดใส่ 1.5 = ได้แต้ม 1.5 เท่า</span></label>
+      <input type="number" step="0.1" min="1" value={bonus} onChange={(e) => setBonus(e.target.value)} />
+
+      {Number(bonus) !== 1 && (
+        <>
+          <label>วันที่ได้ตัวคูณ <span style={{ opacity: 0.7 }}>— ไม่เลือก = ได้ทุกวันที่ทำได้</span></label>
+          <div className="tag-days">
+            {DAYS.filter(([d]) => days.includes(d)).map(([d, lbl]) => (
+              <button key={d} className={bonusDays.includes(d) ? 'on' : ''} onClick={() => toggleBonusDay(d)}>{lbl}</button>
+            ))}
+          </div>
+          <div className="muted">
+            {bonusDays.length === 0 || bonusDays.length === days.length
+              ? `ทุกวันที่ทำได้ จะได้ ×${bonus}`
+              : `เฉพาะวัน ${DAYS.filter(([d]) => bonusDays.includes(d)).map(([, l]) => l).join(' ')} ได้ ×${bonus} · วันอื่น ×1`}
+          </div>
+        </>
+      )}
       {!isNew && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={active} onChange={(e) => setActive(e.target.checked)} /> เปิดใช้งาน</label>}
       <button className="btn mt" onClick={save} disabled={busy}>บันทึก</button>
     </Modal>

@@ -17,19 +17,38 @@ function withLock_(fn) {
 function childState_(childId) {
   const child = findById_(TAB.Children, childId);
   if (!child) throw new Error('ไม่พบเด็ก');
+  const cfg = getConfig_();
   const badges = where_(TAB.Badges, function (b) { return String(b.childId) === String(childId); })
-    .map(function (b) { return { kind: b.kind, awardedAt: b.awardedAt }; });
+    .map(function (b) { return { kind: b.kind, awardedAt: toIso_(b.awardedAt) }; });
+  const streak = Number(child.streakCurrent) || 0;
   return {
     id: child.id, name: child.name, avatar: child.avatar, color: child.color,
     points: Number(child.points) || 0,
-    streakCurrent: Number(child.streakCurrent) || 0,
+    streakCurrent: streak,
     streakMax: Number(child.streakMax) || 0,
+    streakBonusPercent: streakBonusPct_(streak, cfg),
+    nextStreakTier: nextStreakTier_(streak, cfg), // {days, percent} หรือ null ถ้าถึงขั้นสูงสุดแล้ว
     badges: badges,
   };
 }
 
+// ขั้นโบนัสสตรีคขั้นถัดไปที่ยังไม่ถึง (ไว้บอกเด็กว่าอีกกี่วันได้เพิ่ม)
+function nextStreakTier_(streak, cfg) {
+  const s = Number(streak) || 0;
+  let best = null;
+  String((cfg && cfg.streakBonusTiers) || '').split(',').forEach(function (part) {
+    const kv = part.split(':');
+    const days = parseInt(kv[0], 10);
+    const pct = parseFloat(kv[1]);
+    if (isNaN(days) || isNaN(pct) || days <= s) return;
+    if (!best || days < best.days) best = { days: days, percent: pct };
+  });
+  return best;
+}
+
 // งานที่เด็กทำได้ตอนนี้ (กรองเฉพาะช่วงเวลาที่เปิด)
 function availableChores_() {
+  const ref = now_();
   const open = openWindowsNow_();
   const openIds = {};
   open.forEach(function (tw) { openIds[tw.id] = tw; });
@@ -44,6 +63,7 @@ function availableChores_() {
       id: c.id, name: c.name, icon: c.icon, basePoints: Number(c.basePoints) || 0,
       timeWindowId: tw.id, timeWindowName: tw.name,
       onTime: isBeforeCutoff_(tw), cutoff: toHm_(tw.cutoff), endTime: toHm_(tw.endTime),
+      multiplierToday: windowMultiplierFor_(tw, ref.dow), // ×1 = วันนี้ไม่มีตัวคูณพิเศษ
     });
   });
   return result;
@@ -172,28 +192,41 @@ const PARENT_ACTIONS = {
       const tw = findById_(TAB.TimeWindows, sub.timeWindowId);
       const cfg = getConfig_();
       const quality = Math.max(10, Math.min(100, Number(p.quality) || 0));
-      const submittedRef = { hm: Utilities.formatDate(new Date(toIso_(sub.submittedAt)), TZ_(), 'HH:mm') };
+      const submittedAt = new Date(toIso_(sub.submittedAt));
+      const submittedRef = { hm: Utilities.formatDate(submittedAt, TZ_(), 'HH:mm') };
       const onTime = hmToMin_(submittedRef.hm) < hmToMin_(tw.cutoff);
+      const dow = parseInt(Utilities.formatDate(submittedAt, TZ_(), 'u'), 10); // 1=จันทร์..7=อาทิตย์
       const members = toArr_(sub.teamMembers);
       const teamSize = members.length || 1;
-      const perPerson = computePoints_(chore, tw, quality, onTime, teamSize, cfg);
+      const perPerson = computePoints_(chore, tw, quality, onTime, teamSize, cfg, dow);
 
-      const today = Utilities.formatDate(new Date(toIso_(sub.submittedAt)), TZ_(), 'yyyy-MM-dd');
+      const today = Utilities.formatDate(submittedAt, TZ_(), 'yyyy-MM-dd');
       const badgesByChild = {};
+      const perChild = [];
       members.forEach(function (cid) {
-        addPoints_(cid, perPerson, false);
         const child = findById_(TAB.Children, cid);
-        if (child) {
-          const res = bumpStreak_(child, today, cfg);
-          if (res.newBadges.length) badgesByChild[cid] = res.newBadges;
-        }
+        if (!child) return;
+        // เดินสตรีคก่อนคิดโบนัส เพื่อให้ "วันนี้" นับรวมด้วย
+        const res = bumpStreak_(child, today, cfg);
+        if (res.newBadges.length) badgesByChild[cid] = res.newBadges;
+        const streak = Number(res.child.streakCurrent) || 0;
+        const got = applyStreakBonus_(perPerson, streak, cfg);
+        addPoints_(cid, got.points, false);
+        perChild.push({
+          id: cid, name: child.name, points: got.points,
+          streak: streak, streakBonusPercent: got.percent,
+        });
       });
 
       update_(TAB.Submissions, sub.id, {
         status: SUB_STATUS.APPROVED, quality: quality, pointsPerPerson: perPerson,
         reviewedBy: s.refId, reviewedAt: new Date().toISOString(),
       });
-      return { pointsPerPerson: perPerson, onTime: onTime, teamSize: teamSize, newBadges: badgesByChild };
+      return {
+        pointsPerPerson: perPerson, onTime: onTime, teamSize: teamSize,
+        windowMultiplier: windowMultiplierFor_(tw, dow),
+        perChild: perChild, newBadges: badgesByChild,
+      };
     });
   },
 

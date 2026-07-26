@@ -29,8 +29,10 @@ const SCHEMA = {
   Parents: [
     'id', 'username', 'passwordHash', 'email',
   ],
+  // bonusDays ต่อท้ายเสมอ — ห้ามแทรกกลาง เพราะแถวเดิมอ่านค่าตามลำดับคอลัมน์
+  // ว่าง = ตัวคูณใช้ทุกวันที่ช่วงเวลาเปิด (พฤติกรรมเดิม), ระบุ = ใช้เฉพาะวันเหล่านั้น
   TimeWindows: [
-    'id', 'name', 'startTime', 'endTime', 'cutoff', 'days', 'bonusMultiplier', 'active',
+    'id', 'name', 'startTime', 'endTime', 'cutoff', 'days', 'bonusMultiplier', 'active', 'bonusDays',
   ],
   Chores: [
     'id', 'name', 'icon', 'basePoints', 'timeWindowIds', 'active',
@@ -72,7 +74,7 @@ const SCHEMA = {
 const TEXT_COLS = {
   Children: ['pinHash', 'lastStreakDate'],
   Parents: ['passwordHash'],
-  TimeWindows: ['startTime', 'endTime', 'cutoff', 'days'],
+  TimeWindows: ['startTime', 'endTime', 'cutoff', 'days', 'bonusDays'],
   Chores: ['timeWindowIds'],
   Submissions: ['teamMembers', 'submittedAt', 'reviewedAt'],
   Redemptions: ['requestedAt', 'decidedAt'],
@@ -90,6 +92,8 @@ const DEFAULT_CONFIG = {
   timezone: 'Asia/Bangkok',
   language: 'th',
   streakBadges: '3,7,14,30',
+  // โบนัสทำต่อเนื่อง แบบขั้นบันได "จำนวนวัน:% ที่เพิ่ม" — ใช้ขั้นสูงสุดที่ถึงแล้ว
+  streakBonusTiers: '3:10,7:20,14:30,30:50',
   sessionHours: '720',     // อายุ session (ชั่วโมง) = 30 วัน
 };
 
