@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal, EmojiPicker, CHORE_ICONS, AVATAR_ICONS } from '../components.jsx';
+import { useToast, Loading, Empty, Modal, EmojiPicker, TimeSelect, CHORE_ICONS, AVATAR_ICONS } from '../components.jsx';
 
 const SUBTABS = [
   { key: 'children', label: 'เด็ก' },
@@ -308,7 +308,7 @@ function TimeWindowsCrud() {
         <div key={t.id} className="item">
           <div className="grow">
             <div className="title">{t.name} {!t.active && <span className="chip bad">ปิด</span>}</div>
-            <div className="sub">{t.startTime}–{t.endTime} · cutoff {t.cutoff} · ×{t.bonusMultiplier}</div>
+            <div className="sub">{t.startTime}–{t.endTime} น. · ส่งทันเวลาก่อน {t.cutoff} น. · โบนัส ×{t.bonusMultiplier}</div>
             <div className="sub">{t.days.map((d) => (DAYS.find((x) => x[0] === String(d)) || [])[1]).join(' ')}</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -349,11 +349,9 @@ function TwForm({ data, onClose, onDone }) {
     <Modal title={isNew ? 'เพิ่มช่วงเวลา' : 'แก้ไขช่วงเวลา'} onClose={onClose}>
       <label>ชื่อช่วงเวลา</label>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น เช้า" />
-      <div className="row">
-        <div><label>เริ่ม</label><input type="time" value={startTime} onChange={(e) => setStart(e.target.value)} /></div>
-        <div><label>สิ้นสุด</label><input type="time" value={endTime} onChange={(e) => setEnd(e.target.value)} /></div>
-        <div><label>cutoff</label><input type="time" value={cutoff} onChange={(e) => setCutoff(e.target.value)} /></div>
-      </div>
+      <TimeSelect label="เริ่มทำได้ตั้งแต่" value={startTime} onChange={setStart} />
+      <TimeSelect label="ทำได้ถึง" value={endTime} onChange={setEnd} />
+      <TimeSelect label="ส่งทันเวลาก่อน" hint="— ส่งหลังเวลานี้ได้แต้มน้อยลง" value={cutoff} onChange={setCutoff} />
       <label>วันในสัปดาห์</label>
       <div className="tag-days">
         {DAYS.map(([d, lbl]) => <button key={d} className={days.includes(d) ? 'on' : ''} onClick={() => toggle(d)}>{lbl}</button>)}

@@ -86,8 +86,8 @@ function Chores({ session }) {
               <button key={c.id + c.timeWindowId} className="tile" onClick={() => setSel(c)}>
                 <div className="emoji">{c.icon || '🧹'}</div>
                 <div className="name">{c.name}</div>
-                <div className="meta">{c.basePoints} แต้ม · {c.timeWindowName}</div>
-                <div className="meta">{c.onTime ? '⏰ ทันเวลา' : '⚠️ สายแล้ว (ลดแต้ม)'}</div>
+                <div className="meta">{c.basePoints} แต้ม · {c.timeWindowName} (ถึง {c.endTime} น.)</div>
+                <div className="meta">{c.onTime ? `⏰ ทันเวลา — ส่งก่อน ${c.cutoff} น.` : `⚠️ เลย ${c.cutoff} น. แล้ว (ได้แต้มน้อยลง)`}</div>
               </button>
             ))}
           </div>

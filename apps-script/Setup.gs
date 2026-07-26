@@ -126,16 +126,26 @@ function diagnoseAuth() {
 }
 
 /**
- * resetParentPassword() — ตั้งรหัสผ่านผู้ปกครองใหม่ (ใช้เมื่อลืมรหัส)
- * แก้ 2 ค่าด้านล่างก่อนกด Run  ถ้ายังไม่มี username นี้จะสร้างใหม่ให้
+ * resetParentPassword() — ตั้งรหัสผ่านผู้ปกครองใหม่ (ใช้เมื่อลืมรหัส/แฮชเสีย)
+ *
+ * ไม่ต้องแก้โค้ด: ใส่รหัสใหม่ที่ ⚙️ Project Settings > Script properties
+ *   ชื่อ  = NEW_PARENT_PASSWORD
+ *   ค่า   = รหัสใหม่ที่ต้องการ
+ * แล้วกด Run — ฟังก์ชันจะแฮชเก็บลงชีต และ "ลบ" property นั้นทิ้งทันที
+ * เพื่อไม่ให้รหัสจริงค้างอยู่ที่ไหนเลย  (ถ้ายังไม่มี username นี้จะสร้างใหม่ให้)
  */
 function resetParentPassword() {
   const USERNAME = 'admin';
-  const NEW_PASSWORD = 'CHANGE_ME';   // <<< แก้เป็นรหัสใหม่ที่ต้องการก่อนกด Run
+  const props = PropertiesService.getScriptProperties();
+  const NEW_PASSWORD = props.getProperty('NEW_PARENT_PASSWORD');
 
-  if (!NEW_PASSWORD || NEW_PASSWORD === 'CHANGE_ME') {
-    throw new Error('แก้ค่า NEW_PASSWORD ในฟังก์ชันก่อน แล้วกด Run อีกครั้ง');
+  if (!NEW_PASSWORD) {
+    throw new Error('ยังไม่ได้ใส่รหัสใหม่ — ไปที่ ⚙️ Project Settings > Script properties ' +
+      'แล้วเพิ่ม property ชื่อ NEW_PARENT_PASSWORD ใส่รหัสใหม่เป็นค่า จากนั้นกด Run อีกครั้ง');
   }
+  if (String(NEW_PASSWORD).length < 4) throw new Error('รหัสใหม่สั้นเกินไป (อย่างน้อย 4 ตัว)');
+  props.deleteProperty('NEW_PARENT_PASSWORD'); // ลบก่อนเขียน กันรหัสค้างแม้ขั้นต่อไปพลาด
+
   const rows = where_(TAB.Parents, function (p) { return String(p.username) === USERNAME; });
   if (!rows.length) {
     createParent(USERNAME, NEW_PASSWORD, 'thaikorn@gmail.com');
@@ -143,7 +153,13 @@ function resetParentPassword() {
     return 'created';
   }
   update_(TAB.Parents, rows[0].id, { passwordHash: hashSecret_(NEW_PASSWORD) });
-  Logger.log('ตั้งรหัสผ่านใหม่ให้ "' + USERNAME + '" แล้ว — ลองล็อกอินได้เลย');
+
+  // ตรวจว่าค่าที่เขียนลงชีตยังเป็นข้อความ hex 64 ตัวจริง (เคสเดิมโดน Sheet แปลงเป็นตัวเลข)
+  const saved = String((findById_(TAB.Parents, rows[0].id) || {}).passwordHash || '');
+  if (!/^[0-9a-f]{64}$/.test(saved)) {
+    throw new Error('เขียนแฮชลงชีตแล้วแต่ค่าเพี้ยน (ยาว ' + saved.length + ' ตัว) — แจ้งให้ตรวจ TEXT_COLS/format ของ Parents!passwordHash');
+  }
+  Logger.log('ตั้งรหัสผ่านใหม่ให้ "' + USERNAME + '" แล้ว (ตรวจแฮชในชีตแล้ว 64 ตัวถูกต้อง) — ลองล็อกอินได้เลย');
   return 'updated';
 }
 

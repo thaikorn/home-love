@@ -91,9 +91,41 @@ export function EmojiPicker({ value, onChange, options, label = 'ไอคอน
   );
 }
 
-// วันที่แบบไทยสั้นๆ
+// ---------- เลือกเวลาแบบไทย 24 ชั่วโมง ----------
+// ไม่ใช้ <input type="time"> เพราะเบราว์เซอร์บังคับรูปแบบตาม locale ของเครื่อง
+// (เครื่องที่ตั้งเป็นอังกฤษจะขึ้น am/pm ซึ่งสั่งเปลี่ยนจากโค้ดไม่ได้)
+const MINUTE_STEPS = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+
+export function TimeSelect({ value, onChange, label, hint }) {
+  const m0 = /^\d{1,2}:\d{1,2}$/.test(value || '') ? value.split(':') : ['8', '0'];
+  const h = String(parseInt(m0[0], 10) || 0).padStart(2, '0');
+  const m = String(parseInt(m0[1], 10) || 0).padStart(2, '0');
+  const minutes = MINUTE_STEPS.indexOf(m) >= 0 ? MINUTE_STEPS : MINUTE_STEPS.concat([m]).sort();
+  return (
+    <div>
+      {label && <label>{label} {hint && <span style={{ opacity: 0.7 }}>{hint}</span>}</label>}
+      <div className="time-select">
+        <select value={h} onChange={(e) => onChange(e.target.value + ':' + m)}>
+          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+            .map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+        <b>:</b>
+        <select value={m} onChange={(e) => onChange(h + ':' + e.target.value)}>
+          {minutes.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+        <span className="muted">น.</span>
+      </div>
+    </div>
+  );
+}
+
+// วันที่+เวลาแบบไทยสั้นๆ 24 ชั่วโมง เช่น "26 ก.ค. 21:49 น."
 export function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  if (isNaN(d.getTime())) return '';
+  const s = d.toLocaleString('th-TH', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  return s.replace(' 24:', ' 00:') + ' น.';
 }
