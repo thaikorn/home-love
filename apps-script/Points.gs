@@ -42,6 +42,36 @@ function computePoints_(chore, tw, quality, onTime, teamSize, cfg, dow) {
   return Math.floor(base * q * timeMult * bonus * teamShare);
 }
 
+/**
+ * XP สะสมของเด็ก = แต้มที่ "หามาได้" ตลอดกาล (งานที่ผ่าน + การปรับแต้มฝั่งบวก)
+ * ไม่ใช่แต้มคงเหลือ — แลกของรางวัลแล้วเลเวลต้องไม่ลดลง
+ */
+function childXp_(childId) {
+  let xp = 0;
+  where_(TAB.Submissions, function (x) {
+    return x.status === SUB_STATUS.APPROVED &&
+      (String(x.submittedBy) === String(childId) || toArr_(x.teamMembers).indexOf(String(childId)) >= 0);
+  }).forEach(function (x) { xp += Number(x.pointsPerPerson) || 0; });
+  where_(TAB.PointAdjustments, function (a) { return String(a.childId) === String(childId); })
+    .forEach(function (a) { const d = Number(a.delta) || 0; if (d > 0) xp += d; });
+  return xp;
+}
+
+// เลเวลจาก XP — ทุก xpPerLevel แต้ม = 1 เลเวล
+function levelFromXp_(xp, cfg) {
+  const per = Math.max(1, parseInt((cfg && cfg.xpPerLevel) || '200', 10));
+  const total = Math.max(0, Number(xp) || 0);
+  const level = Math.floor(total / per) + 1;
+  return {
+    level: level,
+    xp: total,
+    xpInLevel: total - (level - 1) * per,
+    xpForLevel: per,
+    xpToNext: level * per - total,
+    nextLevelAt: level * per,
+  };
+}
+
 // แต้มของเด็กคนหนึ่งหลังบวกโบนัสสตรีคของเขาเอง
 function applyStreakBonus_(basePoints, streak, cfg) {
   const pct = streakBonusPct_(streak, cfg);

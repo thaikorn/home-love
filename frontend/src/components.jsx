@@ -58,14 +58,51 @@ export const CHORE_ICONS = [
   '🎒', '🧸', '💊', '📦', '🔌', '💡', '📮', '🧾',
   '🎤', '🎸', '🥁', '🎹', '🎼',
 ];
-// อีโมจิสำหรับรูปประจำตัวเด็ก
-export const AVATAR_ICONS = [
-  '🐱', '🐶', '🐰', '🐼', '🦊', '🐻', '🐨', '🐯',
-  '🦁', '🐮', '🐷', '🐸', '🐵', '🦄', '🐥', '🐧',
-  '🦉', '🐬', '🐢', '🦋', '🐙', '🦖', '👦', '👧',
-  '🧒', '👶', '🌸', '⭐', '🌈', '🍓', '🍎', '🍭',
-  '🚀', '⚽', '🎨', '🎵',
+// รูปประจำตัวเด็ก = 12 นักษัตร (เรียงตามปีนักษัตรไทย)
+export const ZODIAC = [
+  { e: '🐀', th: 'ชวด', sub: 'หนู' },
+  { e: '🐂', th: 'ฉลู', sub: 'วัว' },
+  { e: '🐅', th: 'ขาล', sub: 'เสือ' },
+  { e: '🐇', th: 'เถาะ', sub: 'กระต่าย' },
+  { e: '🐉', th: 'มะโรง', sub: 'งูใหญ่/มังกร' },
+  { e: '🐍', th: 'มะเส็ง', sub: 'งูเล็ก' },
+  { e: '🐎', th: 'มะเมีย', sub: 'ม้า' },
+  { e: '🐐', th: 'มะแม', sub: 'แพะ' },
+  { e: '🐒', th: 'วอก', sub: 'ลิง' },
+  { e: '🐓', th: 'ระกา', sub: 'ไก่' },
+  { e: '🐕', th: 'จอ', sub: 'หมา' },
+  { e: '🐖', th: 'กุน', sub: 'หมู' },
 ];
+
+/** ตัวเลือกรูปประจำตัวแบบ 12 นักษัตร (ค่าเก็บเป็นอีโมจิเหมือนเดิม) */
+export function ZodiacPicker({ value, onChange, label = 'รูปประจำตัว (12 นักษัตร)' }) {
+  const known = ZODIAC.some((z) => z.e === value);
+  return (
+    <>
+      <label>{label}</label>
+      <div className="zodiac-grid">
+        {ZODIAC.map((z) => (
+          <button
+            key={z.e}
+            type="button"
+            className={value === z.e ? 'on' : ''}
+            onClick={() => onChange(z.e)}
+            title={z.sub}
+          >
+            <span className="face">{z.e}</span>
+            <span className="nm">{z.th}</span>
+            <span className="sub">{z.sub}</span>
+          </button>
+        ))}
+      </div>
+      <div className="emoji-current">
+        <span className="preview">{value || '❓'}</span>
+        <input value={value} maxLength={8} onChange={(ev) => onChange(ev.target.value)} placeholder="อีโมจิ" />
+        <span className="muted">{known ? '' : 'อีโมจิเอง (ไม่ใช่นักษัตร)'}</span>
+      </div>
+    </>
+  );
+}
 
 /**
  * ช่องเลือกอีโมจิ: ตารางให้กดเลือก + ช่องพิมพ์เอง (ค่าเป็น string เดียว)

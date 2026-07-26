@@ -208,12 +208,13 @@ function PointsView() {
 
   return (
     <div className="card">
-      <h2>แต้มลูกๆ</h2>
+      <h2>แต้ม &amp; เลเวลลูกๆ</h2>
       {report.length === 0 ? <Empty /> : report.map((c) => (
         <div key={c.id} className="item">
           <div className="grow">
-            <div className="title">{c.avatar} {c.name} {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
-            <div className="sub">🔥 สตรีค {c.streakCurrent} (สูงสุด {c.streakMax})</div>
+            <div className="title">{c.avatar} {c.name} <span className="chip ok">LV.{(c.level || {}).level ?? 1}</span> {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
+            <div className="sub">🔥 ทำต่อเนื่อง {c.streakCurrent} วัน (สูงสุด {c.streakMax}){c.streakBonusPercent > 0 ? ` · โบนัส +${c.streakBonusPercent}%` : ''}</div>
+            <div className="sub">XP รวม {(c.level || {}).xp ?? 0} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล</div>
           </div>
           <div className="right">
             <div className="num" style={{ fontWeight: 800, color: 'var(--pink-dark)' }}>{c.points}</div>

@@ -6,7 +6,7 @@ export default function Login({ onLogin }) {
   const [mode, setMode] = useState('child'); // 'child' | 'parent'
   return (
     <div className="app">
-      <div className="topbar"><h1>💗 Home Love</h1></div>
+      <div className="topbar"><h1>⚔️ HOME LOVE</h1><div className="sub">ภารกิจงานบ้าน</div></div>
       <div className="app-body">
         {mode === 'child'
           ? <ChildLogin onLogin={onLogin} toParent={() => setMode('parent')} />
@@ -52,7 +52,7 @@ function ChildLogin({ onLogin, toParent }) {
     return (
       <div>
         <div className="card">
-          <h2>แตะรูปของหนู 👇</h2>
+          <h2>เลือกตัวละครของหนู 👇</h2>
           {children.length === 0
             ? <p className="muted">ยังไม่มีเด็กในระบบ — ให้ผู้ปกครองเพิ่มก่อน</p>
             : (
@@ -75,7 +75,7 @@ function ChildLogin({ onLogin, toParent }) {
     <div>
       <div className="card" style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 60 }}>{picked.avatar}</div>
-        <h2>สวัสดี {picked.name} — ใส่ PIN</h2>
+        <h2>{picked.name} — ใส่ PIN เพื่อเริ่มภารกิจ</h2>
         <div className="pin-dots">
           {[0, 1, 2, 3].map((i) => <div key={i} className={'dot' + (i < pin.length ? ' on' : '')} />)}
         </div>

@@ -4,9 +4,9 @@ import { useToast, Loading, Empty, Modal, StatusChip, fmtDate } from '../compone
 
 const TABS = [
   { key: 'home', label: 'หน้าหลัก', ic: '🏠' },
-  { key: 'chores', label: 'ทำงาน', ic: '🧹' },
+  { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
   { key: 'status', label: 'สถานะ', ic: '📋' },
-  { key: 'shop', label: 'ร้านรางวัล', ic: '🎁' },
+  { key: 'shop', label: 'ร้านค้า', ic: '🎁' },
   { key: 'wish', label: 'อธิษฐาน', ic: '⭐' },
 ];
 
@@ -15,7 +15,7 @@ export default function ChildApp({ session, onLogout }) {
   return (
     <div className="app">
       <div className="topbar">
-        <div><h1>สวัสดี {session.name} 👋</h1></div>
+        <div><h1>สวัสดี {session.name} 👋</h1><div className="sub">พร้อมลุยภารกิจหรือยัง?</div></div>
         <button className="btn gray sm" onClick={onLogout}>ออก</button>
       </div>
       <div className="app-body">
@@ -41,27 +41,48 @@ function Home() {
   const [st, setSt] = useState(null);
   useEffect(() => { call('child.state').then(setSt).catch((e) => toast(e.message, 'err')); }, [toast]);
   if (!st) return <Loading />;
+  const lv = st.level || { level: 1, xpInLevel: 0, xpForLevel: 200, xpToNext: 200, xp: 0 };
+  const lvPct = Math.min(100, Math.round((lv.xpInLevel / lv.xpForLevel) * 100));
+  const nextTier = st.nextStreakTier;
+  const tierPct = nextTier ? Math.min(100, Math.round((st.streakCurrent / nextTier.days) * 100)) : 100;
+
   return (
     <div>
+      <div className="card">
+        <div className="levelbar">
+          <div className="lv"><small>LV</small><b>{lv.level}</b></div>
+          <div className="grow">
+            <div className="bar-label"><span>{st.avatar} {st.name}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
+            <div className="bar"><i style={{ width: lvPct + '%' }} /></div>
+            <div className="muted" style={{ marginTop: 4 }}>อีก {lv.xpToNext} แต้ม → เลเวล {lv.level + 1}</div>
+          </div>
+        </div>
+      </div>
+
       <div className="stats">
-        <div className="stat"><div className="num">{st.points}</div><div className="lbl">แต้มสะสม</div></div>
+        <div className="stat"><div className="num">{st.points}</div><div className="lbl">◆ แต้มที่มี</div></div>
         <div className="stat"><div className="num">🔥{st.streakCurrent}</div><div className="lbl">ทำต่อเนื่อง (วัน)</div></div>
         <div className="stat"><div className="num">{st.streakMax}</div><div className="lbl">สถิติสูงสุด</div></div>
       </div>
+
       <div className="card">
-        <h2>โบนัสทำต่อเนื่อง 🔥</h2>
+        <h2>🔥 คอมโบทำต่อเนื่อง</h2>
         {st.streakBonusPercent > 0
-          ? <p>ตอนนี้ทำต่อเนื่อง <b>{st.streakCurrent} วัน</b> → ทุกงานที่ส่งได้แต้ม <b style={{ color: 'var(--pink-dark)' }}>+{st.streakBonusPercent}%</b> 🎉</p>
+          ? <p>ทำติดกัน <b>{st.streakCurrent} วัน</b> → ทุกงานได้แต้ม <b style={{ color: 'var(--gold)' }}>+{st.streakBonusPercent}%</b> 🎉</p>
           : <p className="muted">ทำงานให้ผ่านทุกวันติดกัน แล้วจะได้แต้มเพิ่มทุกงาน</p>}
-        {st.nextStreakTier && (
-          <p className="muted">
-            อีก <b>{st.nextStreakTier.days - st.streakCurrent} วัน</b> (ครบ {st.nextStreakTier.days} วัน)
-            จะได้เพิ่มเป็น +{st.nextStreakTier.percent}%
-          </p>
+        {nextTier && (
+          <>
+            <div className="bar-label">
+              <span>ขั้นถัดไป +{nextTier.percent}%</span>
+              <span>{st.streakCurrent}/{nextTier.days} วัน</span>
+            </div>
+            <div className="bar gold"><i style={{ width: tierPct + '%' }} /></div>
+            <div className="muted" style={{ marginTop: 4 }}>อีก {nextTier.days - st.streakCurrent} วันติดกัน</div>
+          </>
         )}
       </div>
       <div className="card">
-        <h2>เหรียญรางวัล 🏅</h2>
+        <h2>🏅 เหรียญที่สะสมได้</h2>
         {st.badges.length === 0 ? <Empty text="ยังไม่มีเหรียญ — ทำงานต่อเนื่องเพื่อรับเหรียญ!" /> : (
           <div className="badges">
             {st.badges.map((b, i) => (
@@ -91,7 +112,7 @@ function Chores({ session }) {
   return (
     <div>
       <div className="card">
-        <h2>งานที่ทำได้ตอนนี้</h2>
+        <h2>⚔️ ภารกิจที่ทำได้ตอนนี้</h2>
         {chores.length === 0 ? <Empty text="ตอนนี้ไม่มีงานในช่วงเวลานี้" /> : (
           <div className="tiles">
             {chores.map((c) => (

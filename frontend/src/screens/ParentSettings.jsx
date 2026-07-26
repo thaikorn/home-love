@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal, EmojiPicker, TimeSelect, CHORE_ICONS, AVATAR_ICONS } from '../components.jsx';
+import { useToast, Loading, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, CHORE_ICONS } from '../components.jsx';
 
 const SUBTABS = [
   { key: 'children', label: 'เด็ก' },
@@ -69,7 +69,7 @@ function ChildForm({ data, onClose, onDone }) {
   const toast = useToast();
   const isNew = !data;
   const [name, setName] = useState(data?.name || '');
-  const [avatar, setAvatar] = useState(data?.avatar || '🐱');
+  const [avatar, setAvatar] = useState(data?.avatar || '🐀');
   const [color, setColor] = useState(data?.color || '#ff8fab');
   const [pin, setPin] = useState('');
   const [active, setActive] = useState(data ? data.active : true);
@@ -94,7 +94,7 @@ function ChildForm({ data, onClose, onDone }) {
     <Modal title={isNew ? 'เพิ่มเด็ก' : 'แก้ไขเด็ก'} onClose={onClose}>
       <label>ชื่อ</label>
       <input value={name} onChange={(e) => setName(e.target.value)} />
-      <EmojiPicker value={avatar} onChange={setAvatar} options={AVATAR_ICONS} label="รูปประจำตัว" />
+      <ZodiacPicker value={avatar} onChange={setAvatar} />
       <label>สีประจำตัว</label>
       <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
       <label>PIN 4 หลัก {isNew ? '(บังคับ)' : '(เว้นว่าง = ไม่เปลี่ยน)'}</label>

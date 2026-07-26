@@ -24,6 +24,7 @@ function childState_(childId) {
   return {
     id: child.id, name: child.name, avatar: child.avatar, color: child.color,
     points: Number(child.points) || 0,
+    level: levelFromXp_(childXp_(child.id), cfg),
     streakCurrent: streak,
     streakMax: Number(child.streakMax) || 0,
     streakBonusPercent: streakBonusPct_(streak, cfg),
@@ -316,10 +317,13 @@ const PARENT_ACTIONS = {
 
   // รายงาน/สรุป
   'parent.report': function () {
+    const cfg = getConfig_();
     return where_(TAB.Children, function (c) { return true; }).map(function (c) {
       return {
         id: c.id, name: c.name, avatar: c.avatar, color: c.color, active: toBool_(c.active),
         points: Number(c.points) || 0, streakCurrent: Number(c.streakCurrent) || 0, streakMax: Number(c.streakMax) || 0,
+        streakBonusPercent: streakBonusPct_(Number(c.streakCurrent) || 0, cfg),
+        level: levelFromXp_(childXp_(c.id), cfg),
       };
     });
   },
