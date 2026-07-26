@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal, StatusChip, fmtDate } from '../components.jsx';
+import { useToast, Loading, Empty, Modal, StatusChip, HudNav, fmtDate } from '../components.jsx';
 import ParentSettings from './ParentSettings.jsx';
 
 const TABS = [
@@ -13,6 +13,9 @@ const TABS = [
 
 export default function ParentApp({ session, onLogout }) {
   const [tab, setTab] = useState('review');
+  const [counts, setCounts] = useState({});
+  // ตัวเลขของค้างบนเมนู — โหลดใหม่ทุกครั้งที่สลับแท็บ
+  useEffect(() => { call('parent.counts').then(setCounts).catch(() => {}); }, [tab]);
   return (
     <div className="app">
       <div className="topbar">
@@ -26,13 +29,7 @@ export default function ParentApp({ session, onLogout }) {
         {tab === 'points' && <PointsView />}
         {tab === 'settings' && <ParentSettings />}
       </div>
-      <nav className="bottomnav">
-        {TABS.map((t) => (
-          <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
-            <span className="ic">{t.ic}</span>{t.label}
-          </button>
-        ))}
-      </nav>
+      <HudNav tabs={TABS} active={tab} onChange={setTab} badges={counts} />
     </div>
   );
 }

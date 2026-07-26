@@ -3,10 +3,10 @@ import { call } from '../api.js';
 import { useToast, Loading, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, CHORE_ICONS } from '../components.jsx';
 
 const SUBTABS = [
-  { key: 'children', label: 'เด็ก' },
-  { key: 'chores', label: 'งานบ้าน' },
-  { key: 'rewards', label: 'รางวัล' },
-  { key: 'timewindows', label: 'ช่วงเวลา' },
+  { key: 'children', label: 'ตัวละคร', ic: '🧒' },
+  { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
+  { key: 'rewards', label: 'ของรางวัล', ic: '🎁' },
+  { key: 'timewindows', label: 'ช่วงเวลา', ic: '⏰' },
 ];
 const DAYS = [['1', 'จ'], ['2', 'อ'], ['3', 'พ'], ['4', 'พฤ'], ['5', 'ศ'], ['6', 'ส'], ['7', 'อา']];
 
@@ -14,9 +14,11 @@ export default function ParentSettings() {
   const [sub, setSub] = useState('children');
   return (
     <div>
-      <div className="tag-days" style={{ marginBottom: 12 }}>
+      <div className="subtabs">
         {SUBTABS.map((t) => (
-          <button key={t.key} className={sub === t.key ? 'on' : ''} onClick={() => setSub(t.key)}>{t.label}</button>
+          <button key={t.key} className={sub === t.key ? 'on' : ''} onClick={() => setSub(t.key)}>
+            <span className="ic">{t.ic}</span>{t.label}
+          </button>
         ))}
       </div>
       {sub === 'children' && <ChildrenCrud />}

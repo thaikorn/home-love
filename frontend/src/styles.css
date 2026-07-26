@@ -223,24 +223,87 @@ textarea { min-height: 80px; resize: vertical; }
 .badges { display: flex; flex-wrap: wrap; gap: 10px; }
 .medal { font-size: 30px; filter: drop-shadow(0 0 10px rgba(255,201,60,0.6)); }
 
-/* Bottom nav */
+/* Bottom nav — แผงควบคุมแบบ HUD เกม */
 .bottomnav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
   max-width: 640px; margin: 0 auto;
-  display: grid; grid-template-columns: repeat(5, 1fr);
-  background: linear-gradient(180deg, #1c1f4d 0%, #12143a 100%);
-  border-top: 2px solid var(--line);
-  box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.5);
-  padding-bottom: env(safe-area-inset-bottom);
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 14%),
+    linear-gradient(180deg, #262c66 0%, #11142f 100%);
+  border-top: 2px solid #3b4293;
+  box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  padding: 10px 6px calc(8px + env(safe-area-inset-bottom));
 }
 .bottomnav button {
-  background: none; border: none; padding: 10px 2px 12px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 11px; font-family: inherit; color: var(--muted); cursor: pointer;
+  position: relative; background: none; border: none; padding: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 11px; font-family: inherit; font-weight: 700; color: var(--muted); cursor: pointer;
 }
-.bottomnav button .ic { font-size: 22px; filter: grayscale(0.5) opacity(0.8); }
-.bottomnav button.active { color: var(--gold); font-weight: 800; }
-.bottomnav button.active .ic { filter: none; transform: translateY(-2px); }
+/* ช่องใส่ไอคอน (slot) */
+.bottomnav .slot {
+  position: relative;
+  width: 46px; height: 46px; border-radius: 14px;
+  display: grid; place-items: center;
+  background: linear-gradient(180deg, #2c3273 0%, #191d4a 100%);
+  border: 2px solid #3b4293;
+  box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.07), 0 3px 0 #0d1030;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.25s ease;
+}
+.bottomnav .ic { font-size: 22px; line-height: 1; filter: grayscale(0.45) opacity(0.85); }
+.bottomnav .lb { letter-spacing: 0.2px; }
+
+.bottomnav button:active .slot { transform: translateY(3px); box-shadow: inset 0 2px 5px rgba(0,0,0,0.3), 0 0 0 #0d1030; }
+
+/* ช่องที่เลือกอยู่ — ยกขึ้น เรืองแสงทอง */
+.bottomnav button.active { color: var(--gold); font-weight: 900; }
+.bottomnav button.active .slot {
+  background: linear-gradient(180deg, #ffdd80 0%, var(--gold-dark) 100%);
+  border-color: #ffeaa8;
+  box-shadow: 0 0 20px rgba(255, 201, 60, 0.55), inset 0 2px 6px rgba(255, 255, 255, 0.55), 0 4px 0 #9a6c07;
+  transform: translateY(-7px) scale(1.06);
+  animation: hudpulse 2.2s ease-in-out infinite;
+}
+.bottomnav button.active .ic { filter: none; }
+/* ไฟบอกตำแหน่งบนขอบแผง */
+.bottomnav button.active::before {
+  content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  width: 36px; height: 4px; border-radius: 0 0 6px 6px;
+  background: var(--gold); box-shadow: 0 0 12px var(--gold);
+}
+@keyframes hudpulse {
+  50% { box-shadow: 0 0 30px rgba(255, 201, 60, 0.8), inset 0 2px 6px rgba(255,255,255,0.55), 0 4px 0 #9a6c07; }
+}
+
+/* ตัวเลขของค้างบนไอคอน */
+.bottomnav .badge {
+  position: absolute; top: -7px; right: -8px;
+  min-width: 21px; height: 21px; padding: 0 5px; border-radius: 999px;
+  background: linear-gradient(180deg, #ff97a2 0%, var(--bad) 100%); color: #fff;
+  font-size: 11px; font-weight: 900; display: grid; place-items: center;
+  border: 2px solid #11142f; box-shadow: 0 0 12px rgba(255, 93, 108, 0.7);
+}
+
+/* เมนูย่อยหน้าตั้งค่า — แบบแท็บแผงเกม */
+.subtabs {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px;
+  padding: 6px; border-radius: 16px;
+  background: linear-gradient(180deg, #191d4a 0%, #12153a 100%);
+  border: 2px solid var(--line); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.subtabs button {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 9px 2px; border: 2px solid transparent; border-radius: 12px;
+  background: transparent; color: var(--muted);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.subtabs button .ic { font-size: 18px; filter: grayscale(0.5) opacity(0.85); }
+.subtabs button.on {
+  background: linear-gradient(180deg, #b98bff 0%, var(--purple) 100%);
+  border-color: #d3b6ff; color: #1a1030;
+  box-shadow: 0 0 16px rgba(160, 107, 255, 0.45), inset 0 2px 5px rgba(255, 255, 255, 0.4);
+}
+.subtabs button.on .ic { filter: none; }
 
 /* Lists */
 .item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }

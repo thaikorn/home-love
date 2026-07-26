@@ -33,6 +33,34 @@ export function Modal({ title, onClose, children }) {
   );
 }
 
+// ---------- เมนูล่างแบบ HUD เกม ----------
+/**
+ * tabs: [{key, label, ic}] · badges: { [key]: number } (0/ไม่มี = ไม่แสดง)
+ */
+export function HudNav({ tabs, active, onChange, badges = {} }) {
+  return (
+    <nav className="bottomnav">
+      {tabs.map((t) => {
+        const n = badges[t.key] || 0;
+        return (
+          <button
+            key={t.key}
+            className={active === t.key ? 'active' : ''}
+            onClick={() => onChange(t.key)}
+            aria-label={t.label}
+          >
+            <span className="slot">
+              <span className="ic">{t.ic}</span>
+              {n > 0 && <span className="badge">{n > 99 ? '99+' : n}</span>}
+            </span>
+            <span className="lb">{t.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 // ---------- Loading / Empty ----------
 export function Loading() { return <div className="center-screen" style={{ minHeight: 200 }}><div className="spinner" /></div>; }
 export function Empty({ text }) { return <div className="empty">{text || 'ยังไม่มีข้อมูล'}</div>; }

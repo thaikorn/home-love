@@ -77,6 +77,18 @@ const CHILD_ACTIONS = {
 
   'child.chores': function () { return availableChores_(); },
 
+  // ตัวเลขบนเมนู (HUD): ภารกิจที่ทำได้ตอนนี้ / ผลตรวจที่เพิ่งออก
+  'child.counts': function (s) {
+    const mine = where_(TAB.Submissions, function (x) {
+      return String(x.submittedBy) === String(s.refId) ||
+        toArr_(x.teamMembers).indexOf(String(s.refId)) >= 0;
+    });
+    return {
+      chores: availableChores_().length,
+      pending: mine.filter(function (x) { return x.status === SUB_STATUS.PENDING; }).length,
+    };
+  },
+
   // ส่งงาน: {choreId, timeWindowId, photo(dataUrl), teamMemberIds:[]}
   'child.submit': function (s, p) {
     return withLock_(function () {
@@ -177,6 +189,15 @@ function checkRedeemLimit_(childId, reward) {
 // ============ ACTIONS ฝั่งผู้ปกครอง ============
 
 const PARENT_ACTIONS = {
+  // ตัวเลขบนเมนู (HUD): งานรอตรวจ / คำขอแลก / คำอธิษฐานใหม่
+  'parent.counts': function () {
+    return {
+      review: where_(TAB.Submissions, function (x) { return x.status === SUB_STATUS.PENDING; }).length,
+      redeem: where_(TAB.Redemptions, function (r) { return r.status === RED_STATUS.PENDING; }).length,
+      wishes: where_(TAB.Wishes, function (w) { return w.status === WISH_STATUS.NEW; }).length,
+    };
+  },
+
   // คิวตรวจงาน
   'parent.reviewQueue': function () {
     return where_(TAB.Submissions, function (x) { return x.status === SUB_STATUS.PENDING; })
