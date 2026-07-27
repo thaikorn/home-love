@@ -6,13 +6,26 @@ name: Deploy Home Love (frontend + backend to Apps Script)
 #    ด้วย `cd apps-script && npm run redeploy`  GitHub เหลือหน้าที่แค่สำรองซอร์สโค้ด
 #    push ขึ้น main จะไม่ deploy อะไรอีก (เหลือแต่รันมือผ่านปุ่ม Run workflow)
 #
-# ⚠️ ก่อนจะเปิดใช้อีกครั้ง ต้องอัปเดต secret เหล่านี้ก่อน ไม่งั้น deploy ไม่ผ่าน:
-#    - CLASP_DEPLOYMENT_ID : ยังชี้ deployment เก่าที่ถูกลบไปแล้ว
-#      ค่าที่ถูกต้องดูได้จาก apps-script/.clasp-deployment.json (gitignored)
-#    - VITE_API_URL        : ต้องเป็น URL /exec ของ deployment ปัจจุบัน
-#    - CLASPRC_JSON        : token ของ clasp หมดอายุได้ ต้อง login ใหม่แล้วคัดลอกมาใส่
+# 📌 deployment id กับ URL ย้ายจาก secret มาเขียนตรงนี้ (2026-07-27)
+#    ทั้งสองค่าไม่ใช่ความลับ — มันคือ URL ที่เบราว์เซอร์ทุกเครื่องในบ้านเปิดอยู่ทุกวัน
+#    ที่ย้ายเพราะตอนเก็บเป็น secret มันค้างไม่ตรงกับของจริงอยู่หลายเดือนโดยไม่มีใครเห็น
+#    (แก้ที่เครื่องแล้วลืมไปแก้บน GitHub) อยู่ในไฟล์แบบนี้เห็นพร้อมโค้ด แก้ที่เดียวจบ
+#    ⚠️ ถ้าเปลี่ยนไปใช้ deployment ใหม่ ต้องแก้ 3 ที่ให้ตรงกัน:
+#       apps-script/.clasp-deployment.json · frontend/.env (ทั้งคู่ gitignored) · env: ข้างล่างนี้
+#
+# 🔐 ที่ยังต้องเป็น secret จริงๆ:
+#    - CLASPRC_JSON    : token ของ clasp หมดอายุได้ ต้อง `clasp login` ใหม่แล้วคัดลอกมาใส่
+#    - CLASP_SCRIPT_ID : id ของโปรเจกต์ Apps Script
 on:
   workflow_dispatch: {}
+
+env:
+  # URL /exec ของ deployment ปัจจุบัน — vite อ่านตัวแปรนี้ตอน build
+  # (frontend serve จาก URL นี้ แต่ยังต้อง fetch ไปที่ URL เต็ม เพราะหน้าเว็บ
+  # render อยู่ใน sandboxed iframe คนละ origin กับ script.google.com)
+  VITE_API_URL: https://script.google.com/macros/s/AKfycbyAojwYlNn2LNcL__ODWwJ6U-N9PT4LvyblYk2DzdYK3Ln6PBlEoQ4ROqeYA8VVnYBHQg/exec
+  # deployment ที่ต้อง deploy ทับ เพื่อให้ URL ที่ผู้ใช้เปิดอยู่ไม่เปลี่ยน
+  DEPLOYMENT_ID: AKfycbyAojwYlNn2LNcL__ODWwJ6U-N9PT4LvyblYk2DzdYK3Ln6PBlEoQ4ROqeYA8VVnYBHQg
 
 # deploy ทีละครั้ง (ห้ามยกเลิกกลางคัน เพราะ clasp deploy ควรทำจบ)
 concurrency:
@@ -33,11 +46,6 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        env:
-          # URL ของ Apps Script Web App เอง — ตั้งใน repo Settings > Secrets and variables > Actions
-          # (frontend serve จาก URL นี้ แต่ยังต้อง fetch ไปที่ URL เต็ม เพราะหน้าเว็บ
-          # render อยู่ใน sandboxed iframe คนละ origin กับ script.google.com)
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           npm ci
           npm run build
@@ -67,6 +75,4 @@ jobs:
 
       - name: Deploy web app (คง URL เดิม)
         working-directory: apps-script
-        env:
-          DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
         run: clasp deploy -i "$DEPLOYMENT_ID" -d "ci ${GITHUB_SHA::7}"
