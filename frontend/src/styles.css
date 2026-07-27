@@ -58,8 +58,8 @@ body {
    หน้าเว็บเลื่อนไม่ได้ รายการท้ายๆ เลยเข้าไม่ถึง (เห็น 9 จาก 12) */
 .app { max-width: 640px; margin: 0 auto; height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 /* min-height:0 จำเป็น — ไม่งั้น flex item ไม่ยอมหดให้เล็กกว่าเนื้อหา แล้วจะไม่เกิดสกอลบาร์
-   padding ล่างเผื่อแผง HUD (สูง ~85px + ปุ่มที่เลือกยกขึ้น 17px + safe area เครื่องจอบาก)
-   ⚠️ ห้ามใส่ -webkit-overflow-scrolling: touch กลับเข้ามา — iOS 13+ เลื่อนลื่นเองอยู่แล้ว
+   padding ล่างเผื่อแผง HUD (สูง ~85px + ปุ่มที่เลือกยกขึ้น 17px + safe area เครื่องจอบาก) */
+/* ⚠️ ห้ามใส่ -webkit-overflow-scrolling: touch กลับเข้ามา — iOS 13+ เลื่อนลื่นเองอยู่แล้ว
    แต่มันทำให้กล่องนี้กลายเป็นกรอบอ้างอิงของลูกที่เป็น position:fixed และสร้าง stacking
    context ใหม่ ของที่ควรลอยคลุมทั้งจอ (เช่น Modal) จะถูกขังไว้ในกรอบนี้แทน */
 .app-body {
@@ -301,7 +301,7 @@ textarea { min-height: 80px; resize: vertical; }
 
 /* เมนูย่อยหน้าตั้งค่า — แบบแท็บแผงเกม */
 .subtabs {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px;
   padding: 6px; border-radius: 16px;
   background: linear-gradient(180deg, #191d4a 0%, #12153a 100%);
   border: 2px solid var(--line); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
@@ -372,6 +372,38 @@ textarea { min-height: 80px; resize: vertical; }
 @keyframes bossbob { 50% { transform: translateY(-6px) rotate(-3deg); } }
 .bar.hp > i { background: linear-gradient(90deg, #ff5d6c, #ff9f43); box-shadow: 0 0 14px rgba(255,93,108,0.6); }
 
+/* เตือนว่ายังไม่ได้บันทึก */
+.unsaved {
+  margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+  border: 2px solid var(--warn); background: rgba(255, 176, 32, 0.12);
+  color: var(--warn); font-size: 13px; font-weight: 700; text-align: center;
+}
+
+/* แถวตั้งค่าบอสแต่ละตัวในหน้ากติกา */
+.boss-row {
+  border: 2px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 10px; background: #10123a;
+}
+.boss-row label { margin-top: 8px; }
+
+/* คิวบอสของเดือนในหน้าเด็ก */
+.boss-queue { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+.boss-queue .pip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 11px; color: var(--muted); min-width: 54px;
+}
+.boss-queue .pip .ic {
+  font-size: 24px; line-height: 1; width: 42px; height: 42px; border-radius: 12px;
+  display: grid; place-items: center;
+  border: 2px solid var(--line); background: #191c4b; filter: grayscale(0.7) opacity(0.6);
+}
+.boss-queue .pip.done .ic { filter: none; border-color: var(--ok); background: rgba(53,211,138,0.12); }
+.boss-queue .pip.now .ic {
+  filter: none; border-color: var(--gold); background: #2b2547;
+  box-shadow: 0 0 16px rgba(255,201,60,0.45);
+}
+.boss-queue .pip.now { color: var(--gold); font-weight: 800; }
+
 /* กระดานผู้นำ */
 .rank { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .rank:last-child { border-bottom: none; }
@@ -394,7 +426,10 @@ textarea { min-height: 80px; resize: vertical; }
 @keyframes pop { from { transform: translateX(-50%) translateY(10px); opacity: 0; } }
 
 /* Modal — แผ่นเลื่อนขึ้นจากขอบล่าง
-   ทั้งกล่องเลื่อนได้ (สกอลเดียว ไม่ซ้อนกัน) หัวกล่องเกาะขอบบนด้วย sticky
+   ทั้งกล่องเลื่อนได้ (สกอลเดียว ไม่ซ้อนกัน) หัวกับปุ่มท้ายเกาะขอบด้วย sticky
+   ⚠️ อย่าใช้ layout ที่ "ตรึง" ปุ่มไว้ก้นกล่องแบบ flex + overflow ข้างใน:
+      ถ้าก้นกล่องดันไปอยู่ใต้ขอบจอที่มองเห็น ปุ่มจะไปจมอยู่ตรงนั้นถาวร เลื่อนตามไปก็ไม่ได้
+      แบบ sticky ถ้าพลาดขึ้นมาปุ่มก็ยังอยู่ท้ายเนื้อหา เลื่อนลงไปกดได้เสมอ
    ความสูงคิดเป็น % ของ .modal-bg ไม่ใช้ dvh/vh — อิงกรอบที่เบราว์เซอร์ถือว่าเป็นจอจริงๆ
    (dvh บน Safari เก่ากว่า 15.4 ใช้ไม่ได้ ทั้งบรรทัดจะถูกทิ้ง แล้วกล่องจะสูงเลยจอไป) */
 .modal-bg { position: fixed; inset: 0; background: rgba(5, 6, 20, 0.72); backdrop-filter: blur(3px); display: grid; place-items: end center; z-index: 50; }

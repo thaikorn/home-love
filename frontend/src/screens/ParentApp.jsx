@@ -120,7 +120,7 @@ function ReviewModal({ sub, onClose, onDone }) {
       const won = r.bossWinners || [];
       if (won.length) {
         confetti(140, 2.2); play('boss');
-        msg += ` · ⚔️ ล้มบอสสำเร็จ! ทุกคนได้ +${won[0].points}`;
+        msg += ` · ⚔️ ล้ม${won[0].bossEmoji || ''}${won[0].bossName || 'บอส'}สำเร็จ! ทุกคนได้ +${won[0].points}`;
       } else {
         confetti(60, 1.2); play('success');
       }

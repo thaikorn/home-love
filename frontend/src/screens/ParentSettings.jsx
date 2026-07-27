@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { call, callBatch } from '../api.js';
 import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS } from '../components.jsx';
 
@@ -7,6 +7,7 @@ const SUBTABS = [
   { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
   { key: 'rewards', label: 'ของรางวัล', ic: '🎁' },
   { key: 'timewindows', label: 'ช่วงเวลา', ic: '⏰' },
+  { key: 'game', label: 'กติกา', ic: '⚙️' },
 ];
 const DAYS = [['1', 'จ'], ['2', 'อ'], ['3', 'พ'], ['4', 'พฤ'], ['5', 'ศ'], ['6', 'ส'], ['7', 'อา']];
 
@@ -26,6 +27,138 @@ export default function ParentSettings() {
       {sub === 'chores' && <ChoresCrud />}
       {sub === 'rewards' && <RewardsCrud />}
       {sub === 'timewindows' && <TimeWindowsCrud />}
+      {sub === 'game' && <GameConfig />}
+    </div>
+  );
+}
+
+// ---------------- กติกาเกม (Config) ----------------
+const BOSS_SLOTS = [1, 2, 3];
+
+function GameConfig() {
+  const toast = useToast();
+  const [form, setForm] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
+  const { data, view } = useLoad(useCallback(() => call('parent.config.get'), []));
+
+  // เอาค่าจากเซิร์ฟเวอร์มาใส่ฟอร์ม "เฉพาะตอนที่ยังไม่มีของแก้ค้างอยู่"
+  // useLoad ดึงข้อมูลใหม่ทุกครั้งที่กลับมาดูหน้าจอ ถ้าเขียนทับดื้อๆ ที่พิมพ์ไว้จะหายหมด
+  useEffect(() => { if (data) setForm((f) => (f && dirtyRef.current ? f : data)); }, [data]);
+
+  if (view) return view;
+  if (!form) return null;
+
+  const set = (k) => (e) => {
+    const v = e.target.value;
+    dirtyRef.current = true; setDirty(true);
+    setForm((f) => ({ ...f, [k]: v }));
+  };
+  const num = (k) => Number(form[k]) || 0;
+  const liveSlots = BOSS_SLOTS.filter((i) => String(form['boss' + i + 'Name'] || '').trim());
+  const totalHp = liveSlots.reduce((s, i) => s + num('boss' + i + 'Target'), 0);
+  const totalReward = liveSlots.reduce((s, i) => s + num('boss' + i + 'Reward'), 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      const saved = await call('parent.config.save', form);
+      dirtyRef.current = false; setDirty(false);
+      setForm(saved);
+      toast('บันทึกกติกาแล้ว ✅');
+    } catch (e) { toast(e.message, 'err'); }
+    setBusy(false);
+  }
+
+  return (
+    <div>
+      <div className="card">
+        <h2>⚖️ การให้แต้ม</h2>
+        <label>ส่งงานหลังเวลาที่กำหนด ได้แต้มกี่ % <span style={{ opacity: 0.7 }}>— 100 = ไม่หักเลย</span></label>
+        <input type="number" min="1" max="100" value={form.latePercent} onChange={set('latePercent')} />
+        <label>ทำเป็นทีม แต่ละคนได้กี่ % <span style={{ opacity: 0.7 }}>— ยิ่งน้อยยิ่งจูงใจให้ทำคนเดียว</span></label>
+        <input type="number" min="1" max="100" value={form.teamPercent} onChange={set('teamPercent')} />
+        <div className="muted mt">
+          งาน 10 แต้ม: ทำคนเดียวทันเวลาได้ 10 · ส่งสายได้ {Math.floor(10 * num('latePercent') / 100)} ·
+          ทำเป็นทีมได้คนละ {Math.floor(10 * num('teamPercent') / 100)}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>🔥 สตรีคกับโล่</h2>
+        <label>โบนัสทำต่อเนื่อง <span style={{ opacity: 0.7 }}>— "จำนวนวัน:% ที่เพิ่ม" คั่นด้วยจุลภาค</span></label>
+        <input value={form.streakBonusTiers} onChange={set('streakBonusTiers')} placeholder="3:10,7:20,14:30,30:50" />
+        <div className="muted">ตัวอย่าง 3:10,7:20 = ทำติดกัน 3 วันได้เพิ่ม 10% · ครบ 7 วันได้เพิ่ม 20%</div>
+        <div className="row mt">
+          <div>
+            <label>ราคาโล่ (แต้ม)</label>
+            <input type="number" min="0" value={form.streakShieldCost} onChange={set('streakShieldCost')} />
+          </div>
+          <div>
+            <label>ถือโล่ได้สูงสุด</label>
+            <input type="number" min="0" max="20" value={form.streakShieldMax} onChange={set('streakShieldMax')} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>📜 ภารกิจวันกับเลเวล</h2>
+        <div className="row">
+          <div>
+            <label>ทำครบกี่งานต่อวัน</label>
+            <input type="number" min="1" max="50" value={form.dailyQuestTarget} onChange={set('dailyQuestTarget')} />
+          </div>
+          <div>
+            <label>ได้โบนัสกี่แต้ม</label>
+            <input type="number" min="0" value={form.dailyQuestBonus} onChange={set('dailyQuestBonus')} />
+          </div>
+        </div>
+        <label className="mt">XP ต่อ 1 เลเวล <span style={{ opacity: 0.7 }}>— ยิ่งน้อยยิ่งขึ้นเลเวลไว</span></label>
+        <input type="number" min="1" value={form.xpPerLevel} onChange={set('xpPerLevel')} />
+      </div>
+
+      <div className="card">
+        <h2>🐉 บอสประจำเดือน</h2>
+        <p className="muted">
+          เจอทีละตัวเรียงกัน ล้มตัวที่ 1 แล้วตัวที่ 2 ถึงจะโผล่ · เลือดคิดจากแต้มที่ทุกคนในบ้านทำได้รวมกันตั้งแต่วันที่ 1
+          ของเดือน · ขึ้นเดือนใหม่เริ่มนับใหม่ทั้งหมด · เว้นชื่อว่าง = ปิดบอสตัวนั้น
+        </p>
+        {BOSS_SLOTS.map((i) => (
+          <div key={i} className="boss-row">
+            <div className="bar-label"><span>ตัวที่ {i}</span><span>{form['boss' + i + 'Emoji']}</span></div>
+            <div className="row">
+              <div style={{ flex: 3 }}>
+                <label>ชื่อ</label>
+                <input value={form['boss' + i + 'Name']} onChange={set('boss' + i + 'Name')} placeholder="เว้นว่าง = ไม่ใช้ตัวนี้" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>อีโมจิ</label>
+                <input value={form['boss' + i + 'Emoji']} onChange={set('boss' + i + 'Emoji')} maxLength={8} style={{ textAlign: 'center' }} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>เลือด (แต้มที่ต้องสะสม)</label>
+                <input type="number" min="1" value={form['boss' + i + 'Target']} onChange={set('boss' + i + 'Target')} />
+              </div>
+              <div>
+                <label>รางวัลต่อคน</label>
+                <input type="number" min="0" value={form['boss' + i + 'Reward']} onChange={set('boss' + i + 'Reward')} />
+              </div>
+            </div>
+          </div>
+        ))}
+        <div className="muted mt">
+          ล้มครบ{liveSlots.length > 1 ? `ทั้ง ${liveSlots.length} ตัว` : ''}ต้องใช้ {totalHp} แต้ม ·
+          เด็กแต่ละคนจะได้รวม {totalReward} แต้ม
+        </div>
+      </div>
+
+      {dirty && <div className="unsaved">⚠️ แก้ไว้แล้วยังไม่ได้บันทึก — กดปุ่มข้างล่างเพื่อให้มีผลจริง</div>}
+      <button className="btn mt" onClick={save} disabled={busy || !dirty}>
+        {busy ? 'กำลังบันทึก…' : dirty ? 'บันทึกกติกา' : 'บันทึกแล้ว ✓'}
+      </button>
     </div>
   );
 }

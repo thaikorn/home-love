@@ -195,3 +195,23 @@ function getConfig_() {
 function configNum_(cfg, key) {
   return parseFloat(cfg[key]);
 }
+
+/**
+ * เขียนค่า Config หลายคีย์รวดเดียว (อ่านชีตครั้งเดียว เขียนเฉพาะคีย์ที่ค่าเปลี่ยนจริง)
+ * คีย์ที่ยังไม่มีในชีตจะถูกเพิ่มให้ — Config ไม่มีคอลัมน์ id จึงใช้ update_ ไม่ได้
+ */
+function setConfigMany_(map) {
+  const sh = sheet_(TAB.Config);
+  ensureCols_(sh, TAB.Config);
+  const vIdx = SCHEMA[TAB.Config].indexOf('value') + 1;
+  const byKey = {};
+  readAll_(TAB.Config).forEach(function (r) { byKey[String(r.key)] = r; });
+  Object.keys(map).forEach(function (k) {
+    const v = String(map[k]);
+    const row = byKey[k];
+    if (!row) { insert_(TAB.Config, { key: k, value: v }); return; }
+    if (String(row.value) === v) return;
+    forceTextFormat_(sh, TAB.Config, row._row, [vIdx]);
+    sh.getRange(row._row, vIdx).setValue(v);
+  });
+}

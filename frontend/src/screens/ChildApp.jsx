@@ -107,23 +107,7 @@ function Home() {
           </>
         )}
       </div>
-      {st.boss && (
-        <div className="card boss-card">
-          <h2>🐉 บอสประจำสัปดาห์</h2>
-          <div className={'face' + (st.boss.defeated ? ' down' : '')}>{st.boss.emoji}</div>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>{st.boss.name}</div>
-          <div className="bar-label">
-            <span>{st.boss.defeated ? 'ล้มบอสสำเร็จ! 🎉' : 'HP เหลือ ' + st.boss.hpLeft}</span>
-            <span>{st.boss.damage}/{st.boss.target}</span>
-          </div>
-          <div className="bar hp"><i style={{ width: (100 - st.boss.percent) + '%' }} /></div>
-          <p className="muted" style={{ marginBottom: 0 }}>
-            {st.boss.defeated
-              ? `ทุกคนได้ +${st.boss.reward} แต้ม เจอกันใหม่สัปดาห์หน้า!`
-              : `ช่วยกันทั้งบ้านสะสมแต้มให้ครบ ${st.boss.target} แล้วทุกคนได้ +${st.boss.reward} แต้ม`}
-          </p>
-        </div>
-      )}
+      {st.boss && <BossCard boss={st.boss} />}
 
       {st.dailyQuest && st.dailyQuest.bonus > 0 && (
         <div className="card">
@@ -180,6 +164,40 @@ function Home() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** บอสประจำเดือน — เจอทีละตัว มีคิวบอกว่าล้มไปกี่ตัวแล้ว เหลืออีกกี่ตัว */
+function BossCard({ boss }) {
+  const list = boss.bosses || [];
+  return (
+    <div className="card boss-card">
+      <h2>🐉 บอสประจำเดือน{list.length > 1 ? ` (ตัวที่ ${boss.index}/${boss.count})` : ''}</h2>
+      <div className={'face' + (boss.defeated ? ' down' : '')}>{boss.emoji}</div>
+      <div style={{ fontWeight: 800, marginBottom: 6 }}>{boss.name}</div>
+      <div className="bar-label">
+        <span>{boss.defeated ? 'ล้มสำเร็จ! 🎉' : 'HP เหลือ ' + boss.hpLeft}</span>
+        <span>{boss.damage}/{boss.target}</span>
+      </div>
+      <div className="bar hp"><i style={{ width: (100 - boss.percent) + '%' }} /></div>
+      <p className="muted" style={{ marginBottom: 0 }}>
+        {boss.allDefeated
+          ? `ล้มครบทุกตัวแล้ว! เจอกันใหม่เดือนหน้า 🎉`
+          : boss.defeated
+            ? `ทุกคนได้ +${boss.reward} แต้ม`
+            : `ช่วยกันทั้งบ้านสะสมอีก ${boss.hpLeft} แต้ม แล้วทุกคนได้ +${boss.reward} แต้ม`}
+      </p>
+      {list.length > 1 && (
+        <div className="boss-queue">
+          {list.map((b) => (
+            <div key={b.slot} className={'pip' + (b.defeated ? ' done' : (b.slot === boss.index && !boss.allDefeated ? ' now' : ''))}>
+              <span className="ic">{b.emoji}</span>
+              <span>{b.defeated ? 'ล้มแล้ว' : b.slot === boss.index ? 'กำลังสู้' : 'รอคิว'}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

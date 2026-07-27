@@ -227,4 +227,91 @@ const CRUD_ACTIONS = {
     remove_(TAB.TimeWindows, p.id);
     return { deleted: true };
   },
+
+  // ---------------- ตั้งค่าเกม ----------------
+  'parent.config.get': function () {
+    const cfg = getConfig_();
+    const out = {};
+    EDITABLE_CONFIG.forEach(function (k) { out[k] = String(cfg[k] === undefined ? '' : cfg[k]); });
+    return out;
+  },
+  'parent.config.save': function (s, p) {
+    return withLock_(function () {
+      const patch = validateConfig_(p || {});
+      if (!Object.keys(patch).length) throw new Error('ไม่มีค่าที่จะบันทึก');
+      setConfigMany_(patch);
+      const cfg = getConfig_();
+      const out = {};
+      EDITABLE_CONFIG.forEach(function (k) { out[k] = String(cfg[k] === undefined ? '' : cfg[k]); });
+      return out;
+    });
+  },
 };
+
+// ============ ตั้งค่าเกม: รายการคีย์ที่ให้แก้จากในแอป + ตัวตรวจค่า ============
+// คีย์อื่นใน Config (timezone, language, sessionHours, streakBadges) ตั้งใจไม่ให้แก้จากแอป
+// เพราะแก้ผิดแล้วพังทั้งระบบ ถ้าจำเป็นให้แก้ในชีตโดยตรง
+const EDITABLE_CONFIG = [
+  'latePercent', 'teamPercent',
+  'streakBonusTiers', 'streakShieldCost', 'streakShieldMax',
+  'dailyQuestTarget', 'dailyQuestBonus', 'xpPerLevel',
+  'boss1Name', 'boss1Emoji', 'boss1Target', 'boss1Reward',
+  'boss2Name', 'boss2Emoji', 'boss2Target', 'boss2Reward',
+  'boss3Name', 'boss3Emoji', 'boss3Target', 'boss3Reward',
+];
+
+function intInRange_(v, min, max, label) {
+  const n = parseInt(v, 10);
+  if (isNaN(n) || String(v).trim() === '') throw new Error(label + ': ต้องเป็นตัวเลข');
+  if (n < min || n > max) throw new Error(label + ': ต้องอยู่ระหว่าง ' + min + ' ถึง ' + max);
+  return String(n);
+}
+
+// 'จำนวนวัน:% ที่เพิ่ม' คั่นด้วยจุลภาค เช่น '3:10,7:20,14:30'
+function tiersString_(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  const parts = s.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  const out = parts.map(function (part) {
+    const kv = part.split(':');
+    if (kv.length !== 2) throw new Error('โบนัสสตรีค: รูปแบบต้องเป็น "วัน:%" เช่น 3:10,7:20');
+    const d = parseInt(kv[0], 10);
+    const p = parseFloat(kv[1]);
+    if (isNaN(d) || d < 1 || d > 365) throw new Error('โบนัสสตรีค: จำนวนวันต้องอยู่ระหว่าง 1 ถึง 365');
+    if (isNaN(p) || p < 0 || p > 500) throw new Error('โบนัสสตรีค: % ต้องอยู่ระหว่าง 0 ถึง 500');
+    return d + ':' + p;
+  });
+  out.sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+  return out.join(',');
+}
+
+function textField_(v, maxLen, label) {
+  const s = String(v === undefined || v === null ? '' : v).trim();
+  if (s.length > maxLen) throw new Error(label + ': ยาวเกิน ' + maxLen + ' ตัวอักษร');
+  return s;
+}
+
+/** รับเฉพาะคีย์ที่ส่งมาจริง (แก้บางส่วนได้) และโยน error ภาษาไทยถ้าค่าไม่ผ่าน */
+function validateConfig_(p) {
+  const out = {};
+  const has = function (k) { return p[k] !== undefined; };
+
+  if (has('latePercent')) out.latePercent = intInRange_(p.latePercent, 1, 100, '% เมื่อส่งสาย');
+  if (has('teamPercent')) out.teamPercent = intInRange_(p.teamPercent, 1, 100, '% ส่วนแบ่งของทีม');
+  if (has('streakBonusTiers')) out.streakBonusTiers = tiersString_(p.streakBonusTiers);
+  if (has('streakShieldCost')) out.streakShieldCost = intInRange_(p.streakShieldCost, 0, 100000, 'ราคาโล่');
+  if (has('streakShieldMax')) out.streakShieldMax = intInRange_(p.streakShieldMax, 0, 20, 'จำนวนโล่สูงสุด');
+  if (has('dailyQuestTarget')) out.dailyQuestTarget = intInRange_(p.dailyQuestTarget, 1, 50, 'ภารกิจวัน: จำนวนงาน');
+  if (has('dailyQuestBonus')) out.dailyQuestBonus = intInRange_(p.dailyQuestBonus, 0, 100000, 'ภารกิจวัน: โบนัส');
+  if (has('xpPerLevel')) out.xpPerLevel = intInRange_(p.xpPerLevel, 1, 100000, 'XP ต่อ 1 เลเวล');
+
+  BOSS_SLOTS.forEach(function (i) {
+    const pre = 'boss' + i;
+    const label = 'บอสตัวที่ ' + i;
+    if (has(pre + 'Name')) out[pre + 'Name'] = textField_(p[pre + 'Name'], 40, label + ': ชื่อ');
+    if (has(pre + 'Emoji')) out[pre + 'Emoji'] = textField_(p[pre + 'Emoji'], 8, label + ': อีโมจิ');
+    if (has(pre + 'Target')) out[pre + 'Target'] = intInRange_(p[pre + 'Target'], 1, 1000000, label + ': เลือด');
+    if (has(pre + 'Reward')) out[pre + 'Reward'] = intInRange_(p[pre + 'Reward'], 0, 100000, label + ': รางวัล');
+  });
+  return out;
+}

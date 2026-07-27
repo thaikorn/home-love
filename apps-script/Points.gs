@@ -277,33 +277,83 @@ function periodPointsByChild_(fromStr, untilStr) {
   return byChild;
 }
 
-// สถานะบอสประจำสัปดาห์
-function bossState_(dateStr, cfg) {
-  const monday = mondayOf_(dateStr);
-  const byChild = weekPointsByChild_(monday);
+// ============ บอสประจำเดือน ============
+// 3 ตัวเรียงกันในหนึ่งเดือน: ล้มตัวที่ 1 ตัวที่ 2 ถึงจะโผล่ ล้มครบแล้วจบเดือน
+// ดาเมจ = แต้มที่ทุกคนในบ้านทำได้รวมกันตั้งแต่วันที่ 1 ของเดือน (สะสมต่อเนื่อง ไม่รีเซ็ตรายตัว)
+const BOSS_SLOTS = [1, 2, 3];
+
+// อ่านค่าบอสทั้ง 3 ตัวจาก Config (ตัวที่ไม่ได้ตั้งชื่อไว้ = ไม่ใช้)
+function bossList_(cfg) {
+  const out = [];
+  BOSS_SLOTS.forEach(function (i) {
+    const name = String(cfg['boss' + i + 'Name'] || '').trim();
+    if (!name) return;
+    out.push({
+      slot: i, name: name,
+      emoji: String(cfg['boss' + i + 'Emoji'] || '👹').trim() || '👹',
+      target: Math.max(1, parseInt(cfg['boss' + i + 'Target'], 10) || 1),
+      reward: Math.max(0, parseInt(cfg['boss' + i + 'Reward'], 10) || 0),
+    });
+  });
+  return out;
+}
+
+// ดาเมจรวมของทั้งบ้านในเดือนที่มี dateStr
+function monthDamage_(dateStr) {
+  const byChild = periodPointsByChild_(monthStartOf_(dateStr), nextMonthStart_(dateStr));
   let total = 0;
   Object.keys(byChild).forEach(function (k) { total += byChild[k]; });
-  const target = Math.max(1, parseInt(cfg.bossTargetPoints || '300', 10));
+  return total;
+}
+
+/**
+ * สถานะบอสของเดือนนั้น
+ * คืนทั้งรายการ 3 ตัว (bosses) และตัวที่กำลังสู้อยู่ (current)
+ * ฟิลด์ระดับบนสุด (name/emoji/target/damage/…) = ตัวที่กำลังสู้ เพื่อให้หน้าจอเดิมใช้ได้เหมือนเดิม
+ */
+function bossState_(dateStr, cfg) {
+  const list = bossList_(cfg);
+  const month = String(dateStr).slice(0, 7);
+  const total = monthDamage_(dateStr);
+  let left = total;
+  const bosses = list.map(function (b) {
+    const dealt = Math.min(left, b.target);   // ดาเมจไหลลงตัวถัดไปเมื่อตัวก่อนหน้าล้มแล้ว
+    left = Math.max(0, left - b.target);
+    return {
+      slot: b.slot, name: b.name, emoji: b.emoji, target: b.target, reward: b.reward,
+      damage: dealt, hpLeft: b.target - dealt,
+      percent: Math.min(100, Math.round((dealt / b.target) * 100)),
+      defeated: dealt >= b.target,
+    };
+  });
+  let current = null;
+  for (let i = 0; i < bosses.length; i++) { if (!bosses[i].defeated) { current = bosses[i]; break; } }
+  const allDefeated = bosses.length > 0 && !current;
+  const show = current || bosses[bosses.length - 1] || null;
+  if (!show) return null;   // ผู้ปกครองปิดบอสทั้งหมด (ไม่ได้ตั้งชื่อไว้สักตัว)
   return {
-    name: cfg.bossName || 'บอส', emoji: cfg.bossEmoji || '👹',
-    weekStart: monday, target: target, damage: total,
-    hpLeft: Math.max(0, target - total),
-    percent: Math.min(100, Math.round((total / target) * 100)),
-    defeated: total >= target,
-    reward: Math.max(0, parseInt(cfg.bossReward || '0', 10)),
+    month: month, monthStart: monthStartOf_(dateStr), monthDamage: total,
+    bosses: bosses, index: show.slot, count: bosses.length, allDefeated: allDefeated,
+    name: show.name, emoji: show.emoji, target: show.target, reward: show.reward,
+    damage: show.damage, hpLeft: show.hpLeft, percent: show.percent, defeated: show.defeated,
   };
 }
 
-// ล้มบอสสำเร็จ → แจกรางวัลให้เด็กที่ยังเปิดใช้งานทุกคน (ครั้งเดียวต่อสัปดาห์ต่อคน)
+// ล้มบอสตัวไหนสำเร็จ → แจกรางวัลของตัวนั้นให้เด็กที่ยังเปิดใช้งานทุกคน
+// (ครั้งเดียวต่อบอสต่อเดือนต่อคน — คีย์รอบคือ 'yyyy-MM')
 function awardBossIfDefeated_(dateStr, cfg) {
-  const boss = bossState_(dateStr, cfg);
-  if (!boss.defeated || boss.reward <= 0) return [];
+  const st = bossState_(dateStr, cfg);
+  if (!st) return [];
   const winners = [];
-  where_(TAB.Children, function (c) { return toBool_(c.active); }).forEach(function (c) {
-    if (questAwarded_(c.id, 'boss', boss.weekStart)) return;
-    addPoints_(c.id, boss.reward, false);
-    recordQuest_(c.id, 'boss', boss.weekStart, boss.reward);
-    winners.push({ id: c.id, name: c.name, points: boss.reward });
+  const kids = where_(TAB.Children, function (c) { return toBool_(c.active); });
+  st.bosses.forEach(function (b) {
+    if (!b.defeated || b.reward <= 0) return;
+    kids.forEach(function (c) {
+      if (questAwarded_(c.id, 'boss' + b.slot, st.month)) return;
+      addPoints_(c.id, b.reward, false);
+      recordQuest_(c.id, 'boss' + b.slot, st.month, b.reward);
+      winners.push({ id: c.id, name: c.name, points: b.reward, bossName: b.name, bossEmoji: b.emoji });
+    });
   });
   return winners;
 }

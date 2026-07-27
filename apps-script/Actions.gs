@@ -431,7 +431,7 @@ function mapSubmissionFull_(x, cfg0) {
     photoUrl: drivePhotoSrc_(x.photoUrl), photoOpenUrl: driveOpenUrl_(x.photoUrl),
     submittedAt: toIso_(x.submittedAt), submittedByName: child.name, teamMembers: members,
     basePoints: Number(chore.basePoints) || 0, timeWindowId: x.timeWindowId,
-    // ตัวประกอบของสูตรแต้ม — ส่งไปให้หน้าตรวจงานคิดยอดโชว์สดๆ ตอนเลือกคุณภาพ
+    // ตัวประกอบของสูตรแต้ม — ส่งไปให้หน้าตรวจงานคิดยอดโชว์สดๆ ตอนเลื่อนคุณภาพ
     // ต้องตรงกับ computePoints_() ใน Points.gs เสมอ
     calc: {
       base: Number(chore.basePoints) || 0,

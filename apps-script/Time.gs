@@ -49,6 +49,17 @@ function mondayOf_(dateStr) {
   return d.toISOString().slice(0, 10);
 }
 
+// วันที่ 1 ของเดือนที่มี dateStr — ใช้เป็นคีย์รอบเดือนของบอส
+function monthStartOf_(dateStr) { return String(dateStr).slice(0, 7) + '-01'; }
+
+// วันที่ 1 ของเดือนถัดไป (ขอบบนของรอบ ไม่รวมวันนี้)
+function nextMonthStart_(dateStr) {
+  const p = String(dateStr).split('-').map(Number);
+  const y = p[0];
+  const m = p[1] || 1;
+  return (m >= 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0')) + '-01';
+}
+
 // วันก่อนหน้า n วันของ dateStr
 function addDaysStr_(dateStr, n) {
   const p = String(dateStr).split('-').map(Number);
