@@ -139,6 +139,20 @@ export function useLoad(loader) {
       .catch((e) => setError(e.message || 'โหลดข้อมูลไม่สำเร็จ'));
   }, [loader]);
   useEffect(() => { load(); }, [load]);
+
+  // กลับมาดูหน้าจอเมื่อไหร่ก็ดึงข้อมูลใหม่ — ไม่งั้นแอปที่เปิดค้างไว้จะโชว์ตัวเลขเก่า
+  // ตลอดไป (เช่น ผู้ปกครองปรับแต้มให้แล้ว แต่ฝั่งเด็กยังเป็นยอดเดิม)
+  // load() ไม่ล้าง data ทิ้ง หน้าจอเลยไม่กระพริบเป็นสปินเนอร์ระหว่างโหลดรอบใหม่
+  useEffect(() => {
+    const wake = () => { if (document.visibilityState === 'visible') load(); };
+    const onShow = (e) => { if (e.persisted) wake(); }; // Safari คืนหน้าจากแคช
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('pageshow', onShow);
+    return () => {
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('pageshow', onShow);
+    };
+  }, [load]);
   const view = error
     ? <ErrorRetry message={error} onRetry={load} />
     : (data === null ? <Loading /> : null);

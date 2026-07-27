@@ -14,23 +14,26 @@ const TABS = [
 export default function ChildApp({ session, onLogout }) {
   const [tab, setTab] = useState('home');
   const [counts, setCounts] = useState({});
+  // nonce เปลี่ยน = สั่งให้หน้าที่เปิดอยู่ remount แล้วดึงข้อมูลใหม่
+  const [nonce, setNonce] = useState(0);
   // ตัวเลขบนเมนู — โหลดใหม่ทุกครั้งที่สลับแท็บ
-  useEffect(() => { call('child.counts').then(setCounts).catch(() => {}); }, [tab]);
+  useEffect(() => { call('child.counts').then(setCounts).catch(() => {}); }, [tab, nonce]);
   return (
     <div className="app">
       <div className="topbar">
         <div><h1>สวัสดี {session.name} 👋</h1><div className="sub">พร้อมลุยภารกิจหรือยัง?</div></div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn gray sm" onClick={() => setNonce((n) => n + 1)} title="โหลดใหม่">🔄</button>
           <SoundToggle />
           <button className="btn gray sm" onClick={onLogout}>ออก</button>
         </div>
       </div>
       <AppBody scrollKey={tab}>
-        {tab === 'home' && <Home />}
-        {tab === 'chores' && <Chores session={session} />}
-        {tab === 'status' && <Status />}
-        {tab === 'shop' && <Shop />}
-        {tab === 'wish' && <Wish />}
+        {tab === 'home' && <Home key={nonce} />}
+        {tab === 'chores' && <Chores key={nonce} session={session} />}
+        {tab === 'status' && <Status key={nonce} />}
+        {tab === 'shop' && <Shop key={nonce} />}
+        {tab === 'wish' && <Wish key={nonce} />}
       </AppBody>
       <HudNav tabs={TABS} active={tab} onChange={setTab} badges={{ chores: counts.chores, status: counts.pending }} />
     </div>
