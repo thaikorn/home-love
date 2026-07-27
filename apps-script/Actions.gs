@@ -238,8 +238,10 @@ const PARENT_ACTIONS = {
 
   // คิวตรวจงาน
   'parent.reviewQueue': function () {
+    const cfg = getConfig_(); // อ่านครั้งเดียว ไม่ใช่ต่อรายการ
     return where_(TAB.Submissions, function (x) { return x.status === SUB_STATUS.PENDING; })
-      .map(mapSubmissionFull_).sort(byNewest_('submittedAt'));
+      .map(function (x) { return mapSubmissionFull_(x, cfg); })
+      .sort(byNewest_('submittedAt'));
   },
 
   // อนุมัติงาน: {submissionId, quality(10-100)}
@@ -405,17 +407,34 @@ function mapSubmission_(x) {
     choreName: (findById_(TAB.Chores, x.choreId) || {}).name || '',
   };
 }
-function mapSubmissionFull_(x) {
+function mapSubmissionFull_(x, cfg0) {
   const chore = findById_(TAB.Chores, x.choreId) || {};
   const child = findById_(TAB.Children, x.submittedBy) || {};
+  const tw = findById_(TAB.TimeWindows, x.timeWindowId) || {};
+  const cfg = cfg0 || getConfig_();
   const members = toArr_(x.teamMembers).map(function (id) {
     const c = findById_(TAB.Children, id) || {}; return { id: id, name: c.name };
   });
+  const submittedAt = new Date(toIso_(x.submittedAt));
+  const dow = parseInt(Utilities.formatDate(submittedAt, TZ_(), 'u'), 10);
+  const onTime = tw.cutoff
+    ? hmToMin_(Utilities.formatDate(submittedAt, TZ_(), 'HH:mm')) < hmToMin_(tw.cutoff)
+    : true;
   return {
     id: x.id, choreName: chore.name, choreIcon: chore.icon,
     photoUrl: drivePhotoSrc_(x.photoUrl), photoOpenUrl: driveOpenUrl_(x.photoUrl),
     submittedAt: toIso_(x.submittedAt), submittedByName: child.name, teamMembers: members,
     basePoints: Number(chore.basePoints) || 0, timeWindowId: x.timeWindowId,
+    // ตัวประกอบของสูตรแต้ม — ส่งไปให้หน้าตรวจงานคิดยอดโชว์สดๆ ตอนเลือกคุณภาพ
+    // ต้องตรงกับ computePoints_() ใน Points.gs เสมอ
+    calc: {
+      base: Number(chore.basePoints) || 0,
+      onTime: onTime, cutoff: tw.cutoff || '',
+      latePercent: configNum_(cfg, 'latePercent'),
+      teamPercent: configNum_(cfg, 'teamPercent'),
+      windowMultiplier: windowMultiplierFor_(tw, dow),
+      teamSize: members.length || 1,
+    },
   };
 }
 function mapRedemption_(r) {

@@ -61,11 +61,47 @@ function ReviewQueue() {
   );
 }
 
+// ระดับคุณภาพให้กดเลือก — เดิมเป็นแถบเลื่อน ซึ่งบนมือถือแตะพลาดทีเดียว
+// หัวเลื่อนกระโดดไปตรงที่นิ้วแตะ (กลางแถบ = 50%) แต้มเด็กหายครึ่งโดยไม่มีใครทันเห็น
+const QUALITY_STEPS = [
+  { pct: 100, label: 'เยี่ยม' },
+  { pct: 90, label: 'ดีมาก' },
+  { pct: 80, label: 'ดี' },
+  { pct: 70, label: 'พอใช้' },
+  { pct: 50, label: 'ต้องปรับปรุง' },
+];
+
+// ต้องให้ผลตรงกับ computePoints_() ใน Points.gs (ปัดลงเหมือนกัน)
+function calcPoints(calc, quality) {
+  if (!calc) return null;
+  const q = Math.max(10, Math.min(100, quality)) / 100;
+  const timeMult = calc.onTime ? 1 : (calc.latePercent || 100) / 100;
+  const teamShare = calc.teamSize > 1 ? (calc.teamPercent || 100) / 100 : 1;
+  return Math.floor(calc.base * q * timeMult * (calc.windowMultiplier || 1) * teamShare);
+}
+
+/** ที่มาของตัวเลข — ให้เห็นว่าอะไรหักแต้มไปบ้าง ไม่ใช่รู้แค่ผลลัพธ์ */
+function PointsBreakdown({ calc, quality }) {
+  if (!calc) return null;
+  const rows = [`งานนี้ตั้งไว้ ${calc.base} แต้ม`, `คุณภาพ ${quality}% → ×${quality / 100}`];
+  if (!calc.onTime) rows.push(`ส่งหลัง ${calc.cutoff} น. → ×${calc.latePercent / 100}`);
+  if (calc.windowMultiplier > 1) rows.push(`ตัวคูณช่วงเวลาวันนี้ → ×${calc.windowMultiplier}`);
+  if (calc.teamSize > 1) rows.push(`ทำเป็นทีม ${calc.teamSize} คน → ×${calc.teamPercent / 100} ต่อคน`);
+  return (
+    <div className="calc mt">
+      {rows.map((r, i) => <div key={i}>{r}</div>)}
+      <div className="total">= {calcPoints(calc, quality)} แต้ม{calc.teamSize > 1 ? ' ต่อคน' : ''}</div>
+      <div className="muted">โบนัสสตรีคของแต่ละคนจะบวกเพิ่มตอนกดอนุมัติ</div>
+    </div>
+  );
+}
+
 function ReviewModal({ sub, onClose, onDone }) {
   const toast = useToast();
-  const [quality, setQuality] = useState(80);
+  const [quality, setQuality] = useState(100);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const finalPoints = calcPoints(sub.calc, quality);
 
   async function approve() {
     setBusy(true);
@@ -103,9 +139,20 @@ function ReviewModal({ sub, onClose, onDone }) {
     <Modal title={`ตรวจ: ${sub.choreName}`} onClose={onClose}>
       <Photo src={sub.photoUrl} openUrl={sub.photoOpenUrl} alt={`ผลงาน: ${sub.choreName}`} />
       <div className="muted mt">ผู้ส่ง: {sub.submittedByName}{sub.teamMembers.length > 1 ? ` · ทีม: ${sub.teamMembers.map((m) => m.name).join(', ')}` : ''}</div>
-      <label className="mt">คุณภาพงาน: <b>{quality}%</b></label>
-      <input type="range" min="10" max="100" step="5" value={quality} onChange={(e) => setQuality(Number(e.target.value))} />
-      <button className="btn ok mt" onClick={approve} disabled={busy}>อนุมัติ (ให้ {quality}%)</button>
+      <label className="mt">คุณภาพงาน</label>
+      <div className="tag-days">
+        {QUALITY_STEPS.map((q) => (
+          <button key={q.pct} className={quality === q.pct ? 'on' : ''} onClick={() => setQuality(q.pct)}>
+            {q.label} {q.pct}%
+          </button>
+        ))}
+      </div>
+      <PointsBreakdown calc={sub.calc} quality={quality} />
+      <button className="btn ok mt" onClick={approve} disabled={busy}>
+        {finalPoints === null
+          ? `อนุมัติ (ให้ ${quality}%)`
+          : `อนุมัติ — ให้ ${finalPoints} แต้ม${sub.calc.teamSize > 1 ? '/คน' : ''}`}
+      </button>
       <label className="mt">— หรือตีกลับพร้อมเหตุผล —</label>
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เช่น ยังไม่เรียบร้อย ลองใหม่นะ" />
       <button className="btn bad mt" onClick={reject} disabled={busy}>ตีกลับ</button>

@@ -425,6 +425,16 @@ textarea { min-height: 80px; resize: vertical; }
   border-radius: 12px; background: #10123a; border: 2px solid var(--line);
 }
 
+/* ที่มาของแต้มในหน้าตรวจงาน */
+.calc {
+  border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  background: #10123a; font-size: 13px; color: var(--muted); line-height: 1.7;
+}
+.calc .total {
+  margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line);
+  font-size: 17px; font-weight: 900; color: var(--gold);
+}
+
 .muted { color: var(--muted); font-size: 13px; }
 .empty { text-align: center; color: var(--muted); padding: 40px 12px; }
 .right { text-align: right; }
