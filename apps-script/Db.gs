@@ -45,6 +45,27 @@ function where_(tab, predicate) {
   return readAll_(tab).filter(predicate);
 }
 
+/**
+ * กันกรณีเพิ่มคอลัมน์ใหม่ใน SCHEMA แล้วชีตจริงยังไม่มี — ต่อคอลัมน์ให้พอและเขียนหัวตาราง
+ * เช็คแค่ครั้งเดียวต่อ tab ต่อการรันหนึ่งครั้ง (ตัวแปรระดับสคริปต์รีเซ็ตทุกคำขอ)
+ * จึงไม่ต้องไปรัน setup() ด้วยมือทุกครั้งที่ schema ขยับ
+ */
+const SCHEMA_CHECKED_ = {};
+function ensureCols_(sh, tab) {
+  if (SCHEMA_CHECKED_[tab]) return;
+  SCHEMA_CHECKED_[tab] = true;
+  const cols = SCHEMA[tab];
+  const max = sh.getMaxColumns();
+  if (max < cols.length) sh.insertColumnsAfter(max, cols.length - max);
+  const header = sh.getRange(1, 1, 1, cols.length).getValues()[0];
+  for (let i = 0; i < cols.length; i++) {
+    if (String(header[i] || '') !== cols[i]) {
+      sh.getRange(1, 1, 1, cols.length).setValues([cols]);
+      return;
+    }
+  }
+}
+
 // ดัชนีคอลัมน์ (1-based) ที่ต้องบังคับเป็นข้อความล้วนของ tab นั้น
 function textColIdx_(tab) {
   const cols = SCHEMA[tab];
@@ -64,6 +85,7 @@ function forceTextFormat_(sh, tab, rowNum, onlyCols) {
 // เพิ่มแถวใหม่ (obj ต้องมี key ตาม SCHEMA; ที่ขาดจะเว้นว่าง)
 function insert_(tab, obj) {
   const sh = sheet_(tab);
+  ensureCols_(sh, tab);
   const cols = SCHEMA[tab];
   const row = cols.map(function (c) { return obj[c] === undefined ? '' : obj[c]; });
   const rowNum = sh.getLastRow() + 1;
@@ -76,6 +98,7 @@ function insert_(tab, obj) {
 // อัปเดตแถวตาม id (patch = object ของ field ที่จะเปลี่ยน)
 function update_(tab, id, patch) {
   const sh = sheet_(tab);
+  ensureCols_(sh, tab);
   const cols = SCHEMA[tab];
   const existing = findById_(tab, id);
   if (!existing) throw new Error('ไม่พบ id ' + id + ' ใน ' + tab);

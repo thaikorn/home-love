@@ -43,6 +43,35 @@ function computePoints_(chore, tw, quality, onTime, teamSize, cfg, dow) {
 }
 
 /**
+ * อ่านคอลัมน์ awards ("chd_x:12,chd_y:8") เป็น { childId: points }
+ * คืน null ถ้าว่างหรืออ่านไม่ได้ — ผู้เรียกจะได้ถอยไปใช้ pointsPerPerson แทน
+ * (งานที่อนุมัติไปก่อนจะมีคอลัมน์นี้ย่อมว่างเปล่า)
+ */
+function parseAwards_(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  const out = {};
+  let ok = false;
+  s.split(',').forEach(function (part) {
+    const i = part.lastIndexOf(':');
+    if (i <= 0) return;
+    const cid = part.slice(0, i).trim();
+    const pts = Number(part.slice(i + 1));
+    if (!cid || isNaN(pts)) return;
+    out[cid] = (out[cid] || 0) + pts;
+    ok = true;
+  });
+  return ok ? out : null;
+}
+
+/** แต้มที่เด็กคนนี้ได้รับจริงจากงานชิ้นนี้ (รวมโบนัสสตรีคของเขาเอง) */
+function awardFor_(sub, childId) {
+  const awards = parseAwards_(sub.awards);
+  if (awards) return Number(awards[String(childId)]) || 0;
+  return Number(sub.pointsPerPerson) || 0;  // งานเก่า — มีแค่ยอดกลาง
+}
+
+/**
  * XP สะสมของเด็ก = แต้มที่ "หามาได้" ตลอดกาล (งานที่ผ่าน + การปรับแต้มฝั่งบวก)
  * ไม่ใช่แต้มคงเหลือ — แลกของรางวัลแล้วเลเวลต้องไม่ลดลง
  */
@@ -51,7 +80,7 @@ function childXp_(childId) {
   where_(TAB.Submissions, function (x) {
     return x.status === SUB_STATUS.APPROVED &&
       (String(x.submittedBy) === String(childId) || toArr_(x.teamMembers).indexOf(String(childId)) >= 0);
-  }).forEach(function (x) { xp += Number(x.pointsPerPerson) || 0; });
+  }).forEach(function (x) { xp += awardFor_(x, childId); });
   where_(TAB.PointAdjustments, function (a) { return String(a.childId) === String(childId); })
     .forEach(function (a) { const d = Number(a.delta) || 0; if (d > 0) xp += d; });
   return xp;
@@ -203,17 +232,48 @@ function awardDailyQuest_(childId, dateStr, cfg) {
   return st.bonus;
 }
 
-// แต้มรวมของเด็กทุกคนในสัปดาห์ (นับจากงานที่ผ่าน) — ใช้เป็น "ดาเมจ" ใส่บอส
+// วันที่ของ cell เป็น yyyy-MM-dd ตามโซนเวลาบ้าน — คืน '' ถ้าอ่านไม่ออก/ว่าง
+// (ห้ามโยน new Date('') เข้า formatDate ตรงๆ มันจะพังทั้งคำขอ)
+function dateStrOf_(v) {
+  const iso = toIso_(v);
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return Utilities.formatDate(d, TZ_(), 'yyyy-MM-dd');
+}
+
+// แต้มรวมของเด็กทุกคนในสัปดาห์ (กระดานผู้นำ)
 function weekPointsByChild_(mondayStr) {
-  const until = addDaysStr_(mondayStr, 7);
+  return periodPointsByChild_(mondayStr, addDaysStr_(mondayStr, 7));
+}
+
+// แต้มรวมของเด็กทุกคนในช่วง [fromStr, untilStr) — ใช้ทั้งกระดานผู้นำและ "ดาเมจ" ใส่บอส
+// นับทั้งงานที่ผ่านการตรวจ และแต้มที่ผู้ปกครองปรับเองในช่วงนั้น
+// (ถ้าไม่นับการปรับแต้ม ผู้ปกครองแก้แต้มให้เด็กแล้วกระดานจะไม่ขยับตาม)
+function periodPointsByChild_(fromStr, untilStr) {
   const byChild = {};
+  const inWeek = function (v) {
+    const d = dateStrOf_(v);
+    return d && d >= fromStr && d < untilStr;
+  };
   where_(TAB.Submissions, function (x) { return x.status === SUB_STATUS.APPROVED; })
     .forEach(function (x) {
-      const d = Utilities.formatDate(new Date(toIso_(x.submittedAt)), TZ_(), 'yyyy-MM-dd');
-      if (d < mondayStr || d >= until) return;
+      if (!inWeek(x.submittedAt)) return;
+      // ยอดรายคนถ้ามี (รวมโบนัสสตรีคที่แต่ละคนได้ไม่เท่ากัน) ไม่งั้นถอยไปใช้ยอดกลาง
+      const awards = parseAwards_(x.awards);
+      if (awards) {
+        Object.keys(awards).forEach(function (cid) { byChild[cid] = (byChild[cid] || 0) + awards[cid]; });
+        return;
+      }
       const pts = Number(x.pointsPerPerson) || 0;
       toArr_(x.teamMembers).forEach(function (cid) { byChild[cid] = (byChild[cid] || 0) + pts; });
     });
+  readAll_(TAB.PointAdjustments).forEach(function (a) {
+    if (!inWeek(a.createdAt)) return;
+    byChild[String(a.childId)] = (byChild[String(a.childId)] || 0) + (Number(a.delta) || 0);
+  });
+  // หักแต้มจนติดลบแล้วอย่าให้กระดานโชว์ค่าติดลบ
+  Object.keys(byChild).forEach(function (k) { if (byChild[k] < 0) byChild[k] = 0; });
   return byChild;
 }
 

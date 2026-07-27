@@ -43,6 +43,10 @@ const SCHEMA = {
     'id', 'choreId', 'timeWindowId', 'submittedBy', 'teamMembers',
     'photoUrl', 'submittedAt', 'status', 'quality', 'rejectReason',
     'pointsPerPerson', 'reviewedBy', 'reviewedAt',
+    // แต้มที่เด็ก "แต่ละคน" ได้รับจริงตอนอนุมัติ รูปแบบ "chd_x:12,chd_y:8"
+    // ต่างจาก pointsPerPerson ตรงที่รวมโบนัสสตรีคของแต่ละคนแล้ว (ซึ่งไม่เท่ากัน)
+    // คอลัมน์ใหม่ต้องต่อท้ายเสมอ — ทั้งระบบอ่านเขียนชีตด้วยลำดับคอลัมน์ตาม SCHEMA นี้
+    'awards',
   ],
   Rewards: [
     'id', 'name', 'cost', 'limitDay', 'limitWeek', 'limitMonth', 'active',
@@ -83,7 +87,7 @@ const TEXT_COLS = {
   Parents: ['passwordHash'],
   TimeWindows: ['startTime', 'endTime', 'cutoff', 'days', 'bonusDays'],
   Chores: ['timeWindowIds'],
-  Submissions: ['teamMembers', 'submittedAt', 'reviewedAt'],
+  Submissions: ['teamMembers', 'submittedAt', 'reviewedAt', 'awards'],
   Redemptions: ['requestedAt', 'decidedAt'],
   Wishes: ['createdAt'],
   Badges: ['awardedAt'],

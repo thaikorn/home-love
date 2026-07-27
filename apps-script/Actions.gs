@@ -128,7 +128,9 @@ const CHILD_ACTIONS = {
       return String(x.submittedBy) === String(s.refId) ||
         toArr_(x.teamMembers).indexOf(String(s.refId)) >= 0;
     });
-    return mine.map(mapSubmission_).sort(byNewest_('submittedAt'));
+    // ห้ามส่ง mapSubmission_ เข้า map ตรงๆ — พารามิเตอร์ที่สองจะกลายเป็น index
+    return mine.map(function (x) { return mapSubmission_(x, s.refId); })
+      .sort(byNewest_('submittedAt'));
   },
 
   // กระดานผู้นำพี่น้อง — เรียงตามแต้มที่ทำได้สัปดาห์นี้
@@ -265,6 +267,7 @@ const PARENT_ACTIONS = {
       const today = Utilities.formatDate(submittedAt, TZ_(), 'yyyy-MM-dd');
       const badgesByChild = {};
       const perChild = [];
+      const awards = [];   // ยอดที่แต่ละคนได้รับจริง เก็บลงคอลัมน์ awards
       members.forEach(function (cid) {
         const child = findById_(TAB.Children, cid);
         if (!child) return;
@@ -274,6 +277,7 @@ const PARENT_ACTIONS = {
         const streak = Number(res.child.streakCurrent) || 0;
         const got = applyStreakBonus_(perPerson, streak, cfg);
         addPoints_(cid, got.points, false);
+        awards.push(String(cid) + ':' + got.points);
         const dailyBonus = awardDailyQuest_(cid, today, cfg);
         perChild.push({
           id: cid, name: child.name, points: got.points,
@@ -287,6 +291,7 @@ const PARENT_ACTIONS = {
 
       update_(TAB.Submissions, sub.id, {
         status: SUB_STATUS.APPROVED, quality: quality, pointsPerPerson: perPerson,
+        awards: awards.join(','),
         reviewedBy: s.refId, reviewedAt: new Date().toISOString(),
       });
       return {
@@ -398,12 +403,13 @@ const PARENT_ACTIONS = {
 };
 
 // ============ mappers ============
-function mapSubmission_(x) {
+// childId = คนที่กำลังดูอยู่ ใส่มาเพื่อให้โชว์แต้มที่ "เขา" ได้จริง ไม่ใช่ยอดกลางของงาน
+function mapSubmission_(x, childId) {
   return {
     id: x.id, choreId: x.choreId, status: x.status, submittedAt: toIso_(x.submittedAt),
     photoUrl: drivePhotoSrc_(x.photoUrl), photoOpenUrl: driveOpenUrl_(x.photoUrl),
     quality: x.quality, rejectReason: x.rejectReason,
-    pointsPerPerson: x.pointsPerPerson,
+    pointsPerPerson: childId ? awardFor_(x, childId) : x.pointsPerPerson,
     choreName: (findById_(TAB.Chores, x.choreId) || {}).name || '',
   };
 }
