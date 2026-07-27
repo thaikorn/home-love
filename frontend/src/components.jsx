@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
+import { createPortal } from 'react-dom';
 
 // ---------- Toast ----------
 const ToastCtx = createContext(() => {});
@@ -19,17 +20,31 @@ export function ToastProvider({ children }) {
 }
 
 // ---------- Modal (bottom sheet) ----------
-export function Modal({ title, onClose, children }) {
-  return (
+/**
+ * action = ปุ่มลงมือหลัก อยู่ "บนสุด" ติดกับหัวข้อ ไม่ใช่ท้ายกล่อง
+ *
+ * ⚠️ ต้องแขวนไว้ที่ document.body ผ่าน portal เท่านั้น ห้ามปล่อยให้อยู่ในต้นไม้ของ .app-body
+ *    บน iOS ตัว .app-body (กล่องที่มีสกอลบาร์ของตัวเอง) กลายเป็นกรอบอ้างอิงของลูกที่เป็น
+ *    position:fixed และสร้าง stacking context ใหม่ ผลคือ inset:0 ไปกางเท่ากรอบเนื้อหา
+ *    ไม่ใช่เท่าจอ แล้ว z-index:50 ของกล่องก็สู้ z-index:20 ของแถบเมนูล่างไม่ได้
+ *    ปุ่มท้ายกล่องเลยไปนอนอยู่ใต้แถบเมนู มองไม่เห็นและกดไม่ได้
+ *    อาการที่สังเกตได้: ฉากมืดหลังกล่องไม่คลุมแถบหัวกับแถบเมนูล่าง มันจบพอดีที่ขอบพื้นที่เนื้อหา
+ */
+export function Modal({ title, onClose, action, children }) {
+  return createPortal(
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>{title}</h2>
-          <button className="btn gray sm" onClick={onClose}>ปิด</button>
+        <div className="modal-head">
+          <div className="modal-title">
+            <h2>{title}</h2>
+            <button className="btn gray sm" onClick={onClose}>ปิด</button>
+          </div>
+          {action && <div className="modal-action">{action}</div>}
         </div>
-        {children}
+        <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
