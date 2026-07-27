@@ -1,4 +1,4 @@
-import React, { useState, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 
 // ---------- Toast ----------
 const ToastCtx = createContext(() => {});
@@ -61,9 +61,54 @@ export function HudNav({ tabs, active, onChange, badges = {} }) {
   );
 }
 
-// ---------- Loading / Empty ----------
+// ---------- โครงหน้า: ส่วนเนื้อหาที่มีสกอลบาร์ของตัวเอง ----------
+/** สลับแท็บทีให้ดีดกลับขึ้นบนสุด ไม่ค้างอยู่ตำแหน่งที่เลื่อนไว้ของแท็บก่อนหน้า */
+export function AppBody({ scrollKey, children }) {
+  const ref = useRef(null);
+  useEffect(() => { if (ref.current) ref.current.scrollTop = 0; }, [scrollKey]);
+  return <div className="app-body" ref={ref}>{children}</div>;
+}
+
+/** ให้หน้าจอย่อย (เช่น แท็บย่อยในหน้าตั้งค่า) สั่งเลื่อนขึ้นบนสุดเองได้ */
+export function scrollBodyTop() {
+  const el = typeof document !== 'undefined' && document.querySelector('.app-body');
+  if (el) el.scrollTop = 0;
+}
+
+// ---------- Loading / Empty / โหลดพลาด ----------
 export function Loading() { return <div className="center-screen" style={{ minHeight: 200 }}><div className="spinner" /></div>; }
 export function Empty({ text }) { return <div className="empty">{text || 'ยังไม่มีข้อมูล'}</div>; }
+
+export function ErrorRetry({ message, onRetry }) {
+  return (
+    <div className="empty">
+      <div style={{ fontSize: 34 }}>⚠️</div>
+      <p>{message || 'โหลดข้อมูลไม่สำเร็จ'}</p>
+      <button className="btn sm" onClick={onRetry}>ลองใหม่</button>
+    </div>
+  );
+}
+
+/**
+ * โหลดข้อมูลแบบมาตรฐาน: กำลังโหลด → ได้ข้อมูล / พลาดแล้วกดลองใหม่ได้
+ * (เดิมถ้าโหลดพลาดจะขึ้น toast แล้วปล่อยให้สปินเนอร์หมุนค้างตลอดกาล)
+ * loader ต้องห่อด้วย useCallback · คืน view = <Loading/>/<ErrorRetry/> ถ้ายังไม่มีข้อมูลให้แสดง
+ */
+export function useLoad(loader) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    setError('');
+    return Promise.resolve().then(loader)
+      .then((d) => setData(d === undefined ? null : d))
+      .catch((e) => setError(e.message || 'โหลดข้อมูลไม่สำเร็จ'));
+  }, [loader]);
+  useEffect(() => { load(); }, [load]);
+  const view = error
+    ? <ErrorRetry message={error} onRetry={load} />
+    : (data === null ? <Loading /> : null);
+  return { data, error, load, view };
+}
 
 // ---------- status chip ----------
 export function StatusChip({ status }) {

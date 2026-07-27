@@ -16,17 +16,45 @@ export function setToken(t) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// กันหน้าจอหมุนค้างตลอดกาลตอนเน็ตสะดุด/Apps Script ค้าง
+const TIMEOUT_MS = 25000;
+
 // เรียก action -> คืน data (โยน error ถ้า ok:false)
 export async function call(action, params = {}) {
   if (!API_URL) throw new Error('ยังไม่ได้ตั้งค่า VITE_API_URL');
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, token: getToken(), params }),
-  });
-  const json = await res.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let json;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, token: getToken(), params }),
+      signal: ctrl.signal,
+    });
+    json = await res.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('เชื่อมต่อนานเกินไป — ลองใหม่อีกครั้ง');
+    throw new Error('เชื่อมต่อไม่ได้ — เช็กอินเทอร์เน็ตแล้วลองใหม่');
+  } finally {
+    clearTimeout(timer);
+  }
   if (!json.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
   return json.data;
+}
+
+/**
+ * เรียกหลาย action ในรอบเดียว (Apps Script ต่อรอบช้า — หน้าที่ใช้ข้อมูลหลายชุดจะเร็วขึ้นมาก)
+ * calls: [['child.state'], ['child.rewards', { ... }]] -> คืน array ของ data เรียงตามลำดับเดิม
+ */
+export async function callBatch(calls) {
+  const rows = await call('batch', {
+    calls: calls.map(([action, params]) => ({ action, params: params || {} })),
+  });
+  return rows.map((r) => {
+    if (!r.ok) throw new Error(r.error || 'เกิดข้อผิดพลาด');
+    return r.data;
+  });
 }
 
 // แปลงไฟล์รูปเป็น data URL (ย่อขนาดเพื่อประหยัดโควตา/แบนด์วิดท์)

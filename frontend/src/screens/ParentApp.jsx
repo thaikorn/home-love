@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal, StatusChip, HudNav, fmtDate } from '../components.jsx';
+import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
 import { confetti, play } from '../fx.js';
 import ParentSettings from './ParentSettings.jsx';
 
@@ -23,26 +23,22 @@ export default function ParentApp({ session, onLogout }) {
         <div><h1>ผู้ปกครอง</h1><div className="sub">{session.name}</div></div>
         <button className="btn gray sm" onClick={onLogout}>ออก</button>
       </div>
-      <div className="app-body">
+      <AppBody scrollKey={tab}>
         {tab === 'review' && <ReviewQueue />}
         {tab === 'redeem' && <RedeemQueue />}
         {tab === 'wishes' && <Wishes />}
         {tab === 'points' && <PointsView />}
         {tab === 'settings' && <ParentSettings />}
-      </div>
+      </AppBody>
       <HudNav tabs={TABS} active={tab} onChange={setTab} badges={counts} />
     </div>
   );
 }
 
 function ReviewQueue() {
-  const toast = useToast();
-  const [queue, setQueue] = useState(null);
   const [sel, setSel] = useState(null);
-
-  const load = useCallback(() => call('parent.reviewQueue').then(setQueue).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (queue === null) return <Loading />;
+  const { data: queue, load, view } = useLoad(useCallback(() => call('parent.reviewQueue'), []));
+  if (view) return view;
 
   return (
     <div className="card">
@@ -117,10 +113,8 @@ function ReviewModal({ sub, onClose, onDone }) {
 
 function RedeemQueue() {
   const toast = useToast();
-  const [queue, setQueue] = useState(null);
-  const load = useCallback(() => call('parent.redemptionQueue').then(setQueue).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (queue === null) return <Loading />;
+  const { data: queue, load, view } = useLoad(useCallback(() => call('parent.redemptionQueue'), []));
+  if (view) return view;
 
   async function decide(id, approve) {
     try {
@@ -151,11 +145,9 @@ function RedeemQueue() {
 
 function Wishes() {
   const toast = useToast();
-  const [wishes, setWishes] = useState(null);
   const [conv, setConv] = useState(null);
-  const load = useCallback(() => call('parent.wishes').then(setWishes).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (wishes === null) return <Loading />;
+  const { data: wishes, load, view } = useLoad(useCallback(() => call('parent.wishes'), []));
+  if (view) return view;
 
   async function close(id) {
     try { await call('parent.closeWish', { wishId: id }); toast('ปิดคำอธิษฐานแล้ว'); load(); }
@@ -208,11 +200,9 @@ function ConvertModal({ wish, onClose, onDone }) {
 
 function PointsView() {
   const toast = useToast();
-  const [report, setReport] = useState(null);
   const [adj, setAdj] = useState(null);
-  const load = useCallback(() => call('parent.report').then(setReport).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (report === null) return <Loading />;
+  const { data: report, load, view } = useLoad(useCallback(() => call('parent.report'), []));
+  if (view) return view;
 
   return (
     <div className="card">

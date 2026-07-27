@@ -22,26 +22,66 @@ function verifySecret_(value, hash) {
 }
 
 // ---- Sessions ----
+// getSession_ ถูกเรียกทุก request และเดิมอ่าน "ทั้งตาราง" Sessions ทุกครั้ง
+// จึงแคช token -> session ไว้สั้นๆ และล้างแถวหมดอายุตอนล็อกอิน ไม่งั้นตารางโตไม่หยุด
+const SESSION_CACHE_SEC_ = 300;
+
+function sessionCacheKey_(token) { return 'sess_' + token; }
+
 function createSession_(role, refId, name) {
   const cfg = getConfig_();
   const hours = configNum_(cfg, 'sessionHours') || 720;
   const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   const expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+  pruneSessions_(); // ล็อกอินไม่บ่อย — เก็บกวาดตอนนี้ถูกที่สุด
   insert_(TAB.Sessions, { token: token, role: role, refId: refId, name: name || '', expiresAt: expiresAt });
   return { token: token, role: role, refId: refId, name: name || '' };
 }
 
+// ลบแถว session ที่หมดอายุ/เสียแล้ว คืนจำนวนแถวที่ลบ
+function pruneSessions_() {
+  const sh = sheet_(TAB.Sessions);
+  const values = sh.getDataRange().getValues();
+  const now = Date.now();
+  const doomed = [];
+  for (let r = 1; r < values.length; r++) {
+    if (!values[r][0]) continue; // แถวว่าง ปล่อยไว้
+    const exp = new Date(toIso_(values[r][1])).getTime();
+    if (!exp || isNaN(exp) || exp < now) doomed.push(r + 1);
+  }
+  // ลบจากล่างขึ้นบน เลขแถวที่ยังไม่ได้ลบจะได้ไม่เลื่อน
+  for (let i = doomed.length - 1; i >= 0; i--) sh.deleteRow(doomed[i]);
+  return doomed.length;
+}
+
 // คืน session object ถ้า token ใช้ได้ มิฉะนั้น null
+// หมายเหตุ: ถ้าผู้ปกครองปิดใช้งานเด็กระหว่างนี้ session เดิมจะยังใช้ได้อีกไม่เกิน 5 นาที
+// (การออกจากระบบล้างแคชทันที จึงไม่ค้างสิทธิ์)
 function getSession_(token) {
   if (!token) return null;
+  const cache = CacheService.getScriptCache();
+  const key = sessionCacheKey_(token);
+  const hit = cache.get(key);
+  if (hit) {
+    const c = JSON.parse(hit);
+    if (new Date(c.expiresAt).getTime() >= Date.now()) {
+      return { token: c.token, role: c.role, refId: c.refId, name: c.name };
+    }
+    cache.remove(key);
+  }
   const rows = where_(TAB.Sessions, function (s) { return s.token === token; });
   if (!rows.length) return null;
   const s = rows[0];
-  if (new Date(toIso_(s.expiresAt)).getTime() < Date.now()) {
+  const expiresAt = toIso_(s.expiresAt);
+  if (new Date(expiresAt).getTime() < Date.now()) {
     logout_(s.token); // ลบ session ที่หมดอายุทิ้ง
     return null;
   }
-  return { token: s.token, role: s.role, refId: s.refId, name: s.name };
+  const out = { token: s.token, role: s.role, refId: s.refId, name: s.name };
+  cache.put(key, JSON.stringify({
+    token: out.token, role: out.role, refId: out.refId, name: out.name, expiresAt: expiresAt,
+  }), SESSION_CACHE_SEC_);
+  return out;
 }
 
 function requireRole_(session, role) {
@@ -67,6 +107,7 @@ function loginParent_(username, password) {
 }
 
 function logout_(token) {
+  CacheService.getScriptCache().remove(sessionCacheKey_(token)); // กันสิทธิ์ค้างในแคช
   const sh = sheet_(TAB.Sessions);
   const values = sh.getDataRange().getValues();
   for (let r = 1; r < values.length; r++) {

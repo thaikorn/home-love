@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { call } from '../api.js';
-import { useToast, Loading, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, CHORE_ICONS } from '../components.jsx';
+import { call, callBatch } from '../api.js';
+import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS } from '../components.jsx';
 
 const SUBTABS = [
   { key: 'children', label: 'ตัวละคร', ic: '🧒' },
@@ -12,6 +12,7 @@ const DAYS = [['1', 'จ'], ['2', 'อ'], ['3', 'พ'], ['4', 'พฤ'], ['5', '
 
 export default function ParentSettings() {
   const [sub, setSub] = useState('children');
+  useEffect(() => { scrollBodyTop(); }, [sub]); // สลับแท็บย่อยแล้วให้ขึ้นบนสุด
   return (
     <div>
       <div className="subtabs">
@@ -32,11 +33,9 @@ export default function ParentSettings() {
 // ---------------- เด็ก ----------------
 function ChildrenCrud() {
   const toast = useToast();
-  const [list, setList] = useState(null);
   const [edit, setEdit] = useState(undefined); // undefined=ปิด, null=สร้างใหม่, obj=แก้
-  const load = useCallback(() => call('parent.children.list').then(setList).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (list === null) return <Loading />;
+  const { data: list, load, view } = useLoad(useCallback(() => call('parent.children.list'), []));
+  if (view) return view;
 
   async function del(c) {
     if (!confirm(`ลบ/ปิดใช้งาน "${c.name}"?`)) return;
@@ -110,13 +109,12 @@ function ChildForm({ data, onClose, onDone }) {
 // ---------------- งานบ้าน ----------------
 function ChoresCrud() {
   const toast = useToast();
-  const [list, setList] = useState(null);
-  const [tws, setTws] = useState([]);
   const [edit, setEdit] = useState(undefined);
-  const load = useCallback(() => Promise.all([call('parent.chores.list'), call('parent.timewindows.list')])
-    .then(([c, t]) => { setList(c); setTws(t); }).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (list === null) return <Loading />;
+  // สองชุดนี้ใช้คู่กันเสมอ — ส่งไปรอบเดียวแทนที่จะยิงสอง request
+  const { data, load, view } = useLoad(useCallback(
+    () => callBatch([['parent.chores.list'], ['parent.timewindows.list']]).then(([c, t]) => ({ list: c, tws: t })), []));
+  if (view) return view;
+  const { list, tws } = data;
 
   async function del(c) {
     if (!confirm(`ลบ/ปิด "${c.name}"?`)) return;
@@ -212,11 +210,9 @@ function ChoreForm({ data, tws, onClose, onDone }) {
 // ---------------- รางวัล ----------------
 function RewardsCrud() {
   const toast = useToast();
-  const [list, setList] = useState(null);
   const [edit, setEdit] = useState(undefined);
-  const load = useCallback(() => call('parent.rewards.list').then(setList).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (list === null) return <Loading />;
+  const { data: list, load, view } = useLoad(useCallback(() => call('parent.rewards.list'), []));
+  if (view) return view;
 
   async function del(r) {
     if (!confirm(`ลบ/ปิด "${r.name}"?`)) return;
@@ -288,11 +284,9 @@ function RewardForm({ data, onClose, onDone }) {
 // ---------------- ช่วงเวลา ----------------
 function TimeWindowsCrud() {
   const toast = useToast();
-  const [list, setList] = useState(null);
   const [edit, setEdit] = useState(undefined);
-  const load = useCallback(() => call('parent.timewindows.list').then(setList).catch((e) => toast(e.message, 'err')), [toast]);
-  useEffect(() => { load(); }, [load]);
-  if (list === null) return <Loading />;
+  const { data: list, load, view } = useLoad(useCallback(() => call('parent.timewindows.list'), []));
+  if (view) return view;
 
   async function del(t) {
     if (!confirm(`ลบ "${t.name}"?`)) return;

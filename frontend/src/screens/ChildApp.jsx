@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { call, fileToDataUrl } from '../api.js';
-import { useToast, Loading, Empty, Modal, StatusChip, HudNav, fmtDate } from '../components.jsx';
+import { call, callBatch, fileToDataUrl } from '../api.js';
+import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
 import { confetti, floatText, play, checkLevelUp, soundOn, toggleSound } from '../fx.js';
 
 const TABS = [
@@ -25,13 +25,13 @@ export default function ChildApp({ session, onLogout }) {
           <button className="btn gray sm" onClick={onLogout}>ออก</button>
         </div>
       </div>
-      <div className="app-body">
+      <AppBody scrollKey={tab}>
         {tab === 'home' && <Home />}
         {tab === 'chores' && <Chores session={session} />}
         {tab === 'status' && <Status />}
         {tab === 'shop' && <Shop />}
         {tab === 'wish' && <Wish />}
-      </div>
+      </AppBody>
       <HudNav tabs={TABS} active={tab} onChange={setTab} badges={{ chores: counts.chores, status: counts.pending }} />
     </div>
   );
@@ -48,17 +48,13 @@ function SoundToggle() {
 
 function Home() {
   const toast = useToast();
-  const [st, setSt] = useState(null);
-  const [board, setBoard] = useState([]);
-  const load = useCallback(() => {
-    call('child.state').then((x) => {
-      setSt(x);
+  const { data, load, view } = useLoad(useCallback(
+    () => callBatch([['child.state'], ['child.leaderboard']]).then(([x, board]) => {
       checkLevelUp(x.id, x.level && x.level.level, x.level && x.level.title); // ขึ้นเลเวล = ฉลองเต็มจอ
-    }).catch((e) => toast(e.message, 'err'));
-    call('child.leaderboard').then(setBoard).catch(() => {});
-  }, [toast]);
-  useEffect(load, [load]);
-  if (!st) return <Loading />;
+      return { st: x, board: board || [] };
+    }), []));
+  if (view) return view;
+  const { st, board } = data;
 
   async function buyShield() {
     try {
@@ -187,15 +183,9 @@ function Home() {
 
 function Chores({ session }) {
   const toast = useToast();
-  const [chores, setChores] = useState(null);
   const [sel, setSel] = useState(null);
-
-  const load = useCallback(() => {
-    call('child.chores').then(setChores).catch((e) => toast(e.message, 'err'));
-  }, [toast]);
-  useEffect(load, [load]);
-
-  if (chores === null) return <Loading />;
+  const { data: chores, load, view } = useLoad(useCallback(() => call('child.chores'), []));
+  if (view) return view;
   return (
     <div>
       <div className="card">
@@ -276,10 +266,8 @@ function SubmitModal({ chore, session, onClose, onDone }) {
 }
 
 function Status() {
-  const toast = useToast();
-  const [subs, setSubs] = useState(null);
-  useEffect(() => { call('child.submissions').then(setSubs).catch((e) => toast(e.message, 'err')); }, [toast]);
-  if (subs === null) return <Loading />;
+  const { data: subs, view } = useLoad(useCallback(() => call('child.submissions'), []));
+  if (view) return view;
   return (
     <div className="card">
       <h2>สถานะงานของหนู</h2>
@@ -301,16 +289,13 @@ function Status() {
 
 function Shop() {
   const toast = useToast();
-  const [rewards, setRewards] = useState(null);
-  const [reds, setReds] = useState([]);
-  const [points, setPoints] = useState(0);
+  // สามชุดนี้ต้องใช้พร้อมกัน — ส่งไปรอบเดียว
+  const { data, load, view } = useLoad(useCallback(
+    () => callBatch([['child.rewards'], ['child.redemptions'], ['child.state']])
+      .then(([rw, rd, st]) => ({ rewards: rw, reds: rd, points: st.points })), []));
 
-  const load = useCallback(() => {
-    Promise.all([call('child.rewards'), call('child.redemptions'), call('child.state')])
-      .then(([rw, rd, st]) => { setRewards(rw); setReds(rd); setPoints(st.points); })
-      .catch((e) => toast(e.message, 'err'));
-  }, [toast]);
-  useEffect(load, [load]);
+  if (view) return view;
+  const { rewards, reds, points } = data;
 
   async function redeem(r) {
     if (points < r.cost) return toast('แต้มยังไม่พอ', 'err');
@@ -322,7 +307,6 @@ function Shop() {
     } catch (e) { toast(e.message, 'err'); }
   }
 
-  if (rewards === null) return <Loading />;
   return (
     <div>
       <div className="stat" style={{ marginBottom: 14 }}>

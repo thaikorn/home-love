@@ -69,6 +69,20 @@ function dispatch_(action, token, params) {
   if (!action) throw new Error('ไม่ได้ระบุ action');
   ensureRepaired_(); // migration ครั้งเดียว: ซ่อมค่าเวลา/วันที่ที่ Sheet เคยแปลงชนิดไป
 
+  // --- batch: รวมหลาย action ไว้ในรอบเดียว ---
+  // การเรียก Apps Script แต่ละครั้งคือการรันสคริปต์ใหม่ทั้งรอบ ซึ่งช้า
+  // หน้าที่ต้องใช้ข้อมูลหลายชุดจึงส่งมาทีเดียวได้ แต่ละรายการล้มเหลวแยกกันได้
+  if (action === 'batch') {
+    const calls = params.calls;
+    if (!calls || !calls.length) throw new Error('batch: ไม่มี calls');
+    if (calls.length > 10) throw new Error('batch: ส่งได้ไม่เกิน 10 รายการต่อรอบ');
+    return calls.map(function (c) {
+      if (!c || c.action === 'batch') return { ok: false, error: 'batch ซ้อน batch ไม่ได้' };
+      try { return { ok: true, data: dispatch_(c.action, token, c.params || {}) }; }
+      catch (err) { return { ok: false, error: String(err.message || err) }; }
+    });
+  }
+
   // --- login (ไม่ต้องมี token) ---
   if (action === 'auth.childList') return publicChildren_();
   if (action === 'auth.loginChild') return loginChild_(params.childId, params.pin);
