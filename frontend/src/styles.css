@@ -29,7 +29,10 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+/* min-height ไม่ใช่ height — ถ้าล็อกเป็น 100% เนื้อหาจะทะลุออกนอก body (body สูงเท่าจอ
+   แต่ .app สูงกว่า) ซึ่งบางเบราว์เซอร์/ตอนอยู่ใน iframe ของ Apps Script จะเลื่อนลงไม่ได้
+   ใช้ min-height ให้ body ยืดตามเนื้อหาจริง หน้าจอจะเลื่อนได้เสมอ */
+html, body, #root { min-height: 100%; margin: 0; }
 body {
   font-family: 'Sarabun', 'Prompt', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
@@ -49,8 +52,16 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.app { max-width: 640px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; }
-.app-body { flex: 1; padding: 16px; padding-bottom: 100px; }
+/* แอปสูงเท่าจอพอดี แล้วให้ "ส่วนเนื้อหา" เลื่อนเองด้วยสกอลบาร์ของตัวเอง
+   ไม่พึ่งการเลื่อนของหน้าเว็บ — เพราะตอน serve ผ่าน iframe ของ Apps Script
+   หน้าเว็บเลื่อนไม่ได้ รายการท้ายๆ เลยเข้าไม่ถึง (เห็น 9 จาก 12) */
+.app { max-width: 640px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; }
+/* min-height:0 จำเป็น — ไม่งั้น flex item ไม่ยอมหดให้เล็กกว่าเนื้อหา แล้วจะไม่เกิดสกอลบาร์
+   padding ล่างเผื่อแผง HUD (สูง ~85px + ปุ่มที่เลือกยกขึ้น 17px + safe area เครื่องจอบาก) */
+.app-body {
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px; padding-bottom: calc(112px + env(safe-area-inset-bottom));
+}
 
 /* Top bar */
 .topbar {
