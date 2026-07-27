@@ -48,6 +48,26 @@ export function Modal({ title, onClose, action, children }) {
   );
 }
 
+// ---------- รูปผลงาน ----------
+/**
+ * กดที่รูปเพื่อเปิดเต็มใน Drive · ถ้ารูปโหลดไม่ขึ้นก็ยังเหลือลิงก์ให้กดไปดูได้
+ * (referrerPolicy no-referrer — Drive คืนรูปให้ง่ายกว่าเมื่อไม่ส่ง referrer ข้ามโดเมนไป)
+ */
+export function Photo({ src, openUrl, alt = '' }) {
+  const [broken, setBroken] = useState(false);
+  const link = openUrl || src;
+  if (!src || broken) {
+    return link
+      ? <a className="btn ghost mt" href={link} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '13px 16px' }}>เปิดรูปผลงานใน Google Drive</a>
+      : null;
+  }
+  return (
+    <a href={link} target="_blank" rel="noreferrer">
+      <img className="photo" src={src} alt={alt} referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+    </a>
+  );
+}
+
 // ---------- เมนูล่างแบบ HUD เกม ----------
 /**
  * tabs: [{key, label, ic}] · badges: { [key]: number } (0/ไม่มี = ไม่แสดง)

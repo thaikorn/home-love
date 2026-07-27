@@ -419,6 +419,12 @@ textarea { min-height: 80px; resize: vertical; }
 .modal-action .btn.mt { margin-top: 0; }
 .modal-body { padding: 4px 20px 16px; }
 
+/* รูปในกล่อง — จำกัดความสูงไว้ ไม่งั้นรูปจากกล้องมือถือกินพื้นที่จนดันของอื่นตกจอ */
+.photo {
+  display: block; width: 100%; max-height: 260px; object-fit: contain;
+  border-radius: 12px; background: #10123a; border: 2px solid var(--line);
+}
+
 .muted { color: var(--muted); font-size: 13px; }
 .empty { text-align: center; color: var(--muted); padding: 40px 12px; }
 .right { text-align: right; }

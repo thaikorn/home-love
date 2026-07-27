@@ -26,6 +26,33 @@ function uploadPhoto_(dataUrl, filename) {
   const fileId = file.getId();
   return {
     fileId: fileId,
-    url: 'https://drive.google.com/uc?export=view&id=' + fileId,
+    // เก็บลิงก์หน้าเปิดไฟล์ลงชีต (คนกดจากอีเมลก็เปิดได้ ไม่ใช่ลิงก์ที่ผูกกับวิธีฝังรูป)
+    url: driveOpenUrl_(fileId),
   };
+}
+
+// ============ ลิงก์รูป ============
+// ดึง file id ออกจากค่าที่เก็บในชีต รองรับทุกแบบที่เคยเก็บมา
+// (uc?export=view&id=… ของเดิม, /file/d/…/view ของใหม่, หรือ id เปล่าๆ)
+function driveFileId_(v) {
+  if (!v) return '';
+  const s = String(v);
+  const m = s.match(/[?&]id=([-\w]+)/) || s.match(/\/file\/d\/([-\w]+)/) || s.match(/^([-\w]{20,})$/);
+  return m ? m[1] : '';
+}
+
+/**
+ * ลิงก์สำหรับฝังใน <img>
+ * ต้องเป็น /thumbnail เท่านั้น — uc?export=view ที่เคยใช้ Google ปิดการฝังข้ามเว็บไปแล้ว
+ * ฝังแล้วได้กล่องว่าง (หน้าตรวจงานของผู้ปกครองเลยไม่เห็นรูป)
+ */
+function drivePhotoSrc_(v) {
+  const id = driveFileId_(v);
+  return id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1600' : '';
+}
+
+// หน้าเปิดดูไฟล์เต็มใน Drive (กดจากในแอป/อีเมล)
+function driveOpenUrl_(v) {
+  const id = driveFileId_(v);
+  return id ? 'https://drive.google.com/file/d/' + id + '/view' : '';
 }

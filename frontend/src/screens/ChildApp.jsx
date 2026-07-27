@@ -253,7 +253,7 @@ function SubmitModal({ chore, session, onClose, onDone }) {
       {/* ห้ามใส่ capture="environment" — iOS จะเด้งกล้องขึ้นมาอย่างเดียว
           ไม่ขึ้นเมนูให้เลือกคลังรูปหรือไฟล์ ตัดทางเลือกทิ้งไปเฉยๆ */}
       <input type="file" accept="image/*" onChange={pick} />
-      {preview && <img src={preview} alt="preview" style={{ width: '100%', borderRadius: 12, marginTop: 10 }} />}
+      {preview && <img className="photo mt" src={preview} alt="preview" />}
       {mates.length > 0 && (
         <>
           <label className="mt">ทำเป็นทีม? เลือกเพื่อน (แต่ละคนได้ 70%)</label>
@@ -278,7 +278,7 @@ function Status() {
       <h2>สถานะงานของหนู</h2>
       {subs.length === 0 ? <Empty /> : subs.map((s) => (
         <div key={s.id} className="item">
-          {s.photoUrl ? <img className="thumb" src={s.photoUrl} alt="" /> : <div className="thumb" />}
+          {s.photoUrl ? <img className="thumb" src={s.photoUrl} alt="" referrerPolicy="no-referrer" /> : <div className="thumb" />}
           <div className="grow">
             <div className="title">{s.choreName}</div>
             <div className="sub">{fmtDate(s.submittedAt)}</div>

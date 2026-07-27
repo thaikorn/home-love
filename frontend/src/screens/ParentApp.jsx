@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
+import { useToast, Empty, Modal, Photo, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
 import { confetti, play } from '../fx.js';
 import ParentSettings from './ParentSettings.jsx';
 
@@ -45,7 +45,9 @@ function ReviewQueue() {
       <h2>คิวตรวจงาน ({queue.length})</h2>
       {queue.length === 0 ? <Empty text="ไม่มีงานรอตรวจ 🎉" /> : queue.map((s) => (
         <div key={s.id} className="item">
-          {s.photoUrl ? <img className="thumb" src={s.photoUrl} alt="" onClick={() => window.open(s.photoUrl, '_blank')} /> : <div className="thumb" />}
+          {s.photoUrl
+            ? <img className="thumb" src={s.photoUrl} alt="" referrerPolicy="no-referrer" onClick={() => window.open(s.photoOpenUrl || s.photoUrl, '_blank')} />
+            : <div className="thumb" />}
           <div className="grow">
             <div className="title">{s.choreIcon} {s.choreName}</div>
             <div className="sub">โดย {s.submittedByName}{s.teamMembers.length > 1 ? ` +ทีม ${s.teamMembers.length} คน` : ''}</div>
@@ -99,7 +101,7 @@ function ReviewModal({ sub, onClose, onDone }) {
 
   return (
     <Modal title={`ตรวจ: ${sub.choreName}`} onClose={onClose}>
-      {sub.photoUrl && <img src={sub.photoUrl} alt="" style={{ width: '100%', borderRadius: 12 }} />}
+      <Photo src={sub.photoUrl} openUrl={sub.photoOpenUrl} alt={`ผลงาน: ${sub.choreName}`} />
       <div className="muted mt">ผู้ส่ง: {sub.submittedByName}{sub.teamMembers.length > 1 ? ` · ทีม: ${sub.teamMembers.map((m) => m.name).join(', ')}` : ''}</div>
       <label className="mt">คุณภาพงาน: <b>{quality}%</b></label>
       <input type="range" min="10" max="100" step="5" value={quality} onChange={(e) => setQuality(Number(e.target.value))} />

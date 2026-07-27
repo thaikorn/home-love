@@ -399,7 +399,8 @@ const PARENT_ACTIONS = {
 function mapSubmission_(x) {
   return {
     id: x.id, choreId: x.choreId, status: x.status, submittedAt: toIso_(x.submittedAt),
-    photoUrl: x.photoUrl, quality: x.quality, rejectReason: x.rejectReason,
+    photoUrl: drivePhotoSrc_(x.photoUrl), photoOpenUrl: driveOpenUrl_(x.photoUrl),
+    quality: x.quality, rejectReason: x.rejectReason,
     pointsPerPerson: x.pointsPerPerson,
     choreName: (findById_(TAB.Chores, x.choreId) || {}).name || '',
   };
@@ -411,7 +412,8 @@ function mapSubmissionFull_(x) {
     const c = findById_(TAB.Children, id) || {}; return { id: id, name: c.name };
   });
   return {
-    id: x.id, choreName: chore.name, choreIcon: chore.icon, photoUrl: x.photoUrl,
+    id: x.id, choreName: chore.name, choreIcon: chore.icon,
+    photoUrl: drivePhotoSrc_(x.photoUrl), photoOpenUrl: driveOpenUrl_(x.photoUrl),
     submittedAt: toIso_(x.submittedAt), submittedByName: child.name, teamMembers: members,
     basePoints: Number(chore.basePoints) || 0, timeWindowId: x.timeWindowId,
   };
