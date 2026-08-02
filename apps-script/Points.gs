@@ -72,8 +72,13 @@ function awardFor_(sub, childId) {
 }
 
 /**
- * XP สะสมของเด็ก = แต้มที่ "หามาได้" ตลอดกาล (งานที่ผ่าน + การปรับแต้มฝั่งบวก)
+ * XP สะสมของเด็ก = แต้มที่ "หามาได้" ตลอดกาล
+ * (งานที่ผ่าน + การปรับแต้มฝั่งบวก + โบนัสภารกิจประจำวัน/ล้มบอส)
  * ไม่ใช่แต้มคงเหลือ — แลกของรางวัลแล้วเลเวลต้องไม่ลดลง
+ *
+ * ต้องนับโบนัสใน Quests ด้วย เพราะแต้มพวกนั้นเข้ากระเป๋าเด็กจริง (addPoints_)
+ * ถ้าไม่นับ หน้าผู้ปกครองจะโชว์ "XP รวม" น้อยกว่า "แต้มที่มี" ทั้งที่ยังไม่ได้แลกอะไรเลย
+ * และเลเวลจะขึ้นช้ากว่าที่ควร
  */
 function childXp_(childId) {
   let xp = 0;
@@ -83,6 +88,8 @@ function childXp_(childId) {
   }).forEach(function (x) { xp += awardFor_(x, childId); });
   where_(TAB.PointAdjustments, function (a) { return String(a.childId) === String(childId); })
     .forEach(function (a) { const d = Number(a.delta) || 0; if (d > 0) xp += d; });
+  where_(TAB.Quests, function (q) { return String(q.childId) === String(childId); })
+    .forEach(function (q) { xp += Number(q.points) || 0; });
   return xp;
 }
 
@@ -271,6 +278,13 @@ function periodPointsByChild_(fromStr, untilStr) {
   readAll_(TAB.PointAdjustments).forEach(function (a) {
     if (!inWeek(a.createdAt)) return;
     byChild[String(a.childId)] = (byChild[String(a.childId)] || 0) + (Number(a.delta) || 0);
+  });
+  // โบนัสภารกิจประจำวันคือแต้มที่เด็ก "ทำได้" เหมือนกัน — กระดานผู้นำกับดาเมจบอสต้องนับด้วย
+  // แต่รางวัลจากการล้มบอส (kind 'bossN') ไม่นับ ไม่งั้นล้มตัวหนึ่งแล้วรางวัลจะไหลไปฟาดตัวถัดไปเอง
+  readAll_(TAB.Quests).forEach(function (q) {
+    if (String(q.kind) !== 'daily') return;
+    if (!inWeek(q.awardedAt)) return;
+    byChild[String(q.childId)] = (byChild[String(q.childId)] || 0) + (Number(q.points) || 0);
   });
   // หักแต้มจนติดลบแล้วอย่าให้กระดานโชว์ค่าติดลบ
   Object.keys(byChild).forEach(function (k) { if (byChild[k] < 0) byChild[k] = 0; });
