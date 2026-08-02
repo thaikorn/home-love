@@ -256,19 +256,25 @@ function PointsView() {
   return (
     <div className="card">
       <h2>แต้ม &amp; เลเวลลูกๆ</h2>
-      {report.length === 0 ? <Empty /> : report.map((c) => (
+      {report.length === 0 ? <Empty /> : report.map((c) => {
+        // XP = แต้มที่หามาได้ทั้งหมด · แต้มที่มี = ที่เหลือหลังใช้ไป — สองเลขนี้ต่างกันได้เสมอ
+        // บอกส่วนต่างไว้ตรงนี้ ไม่งั้นดูเผินๆ เหมือนระบบคิดแต้มไม่ตรงกัน
+        const spent = Math.max(0, ((c.level || {}).xp ?? 0) - (c.points || 0));
+        return (
         <div key={c.id} className="item">
           <div className="grow">
             <div className="title">{c.avatar} {c.name} <span className="chip ok">LV.{(c.level || {}).level ?? 1}</span> {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
             <div className="sub">🔥 ทำต่อเนื่อง {c.streakCurrent} วัน (สูงสุด {c.streakMax}){c.streakBonusPercent > 0 ? ` · โบนัส +${c.streakBonusPercent}%` : ''}</div>
-            <div className="sub">{(c.level || {}).titleIcon} {(c.level || {}).title} · XP รวม {(c.level || {}).xp ?? 0} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล{c.shields > 0 ? ` · 🛡️ ${c.shields}` : ''}</div>
+            <div className="sub">{(c.level || {}).titleIcon} {(c.level || {}).title} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล{c.shields > 0 ? ` · 🛡️ ${c.shields}` : ''}</div>
+            <div className="sub muted">หามาได้ทั้งหมด {(c.level || {}).xp ?? 0} (XP) · ใช้ไปแล้ว {spent} · เหลือ {c.points}</div>
           </div>
           <div className="right">
             <div className="num" style={{ fontWeight: 800, color: 'var(--pink-dark)' }}>{c.points}</div>
             <button className="btn sm mt" onClick={() => setAdj(c)}>ปรับแต้ม</button>
           </div>
         </div>
-      ))}
+        );
+      })}
       {adj && <AdjustModal child={adj} onClose={() => setAdj(null)} onDone={() => { setAdj(null); load(); toast('ปรับแต้มแล้ว'); }} />}
     </div>
   );

@@ -265,6 +265,16 @@ const PARENT_ACTIONS = {
       const perPerson = computePoints_(chore, tw, quality, onTime, teamSize, cfg, dow);
 
       const today = Utilities.formatDate(submittedAt, TZ_(), 'yyyy-MM-dd');
+
+      // ปั๊ม "ผ่าน" ลงชีตก่อนแจกแต้ม — ไม่งั้นงานชิ้นนี้ยังเป็น "รอตรวจ" ตอนที่
+      // awardDailyQuest_() ไปนับงานที่ผ่านของวันนี้ ทำให้นับขาดไป 1 ชิ้นเสมอ
+      // (เป้าวันละ 3 ชิ้น เด็กที่ทำพอดี 3 ชิ้นจะไม่มีวันได้โบนัสเลย)
+      // ด้วยเหตุผลเดียวกัน ดาเมจบอสก็เคยตกงานชิ้นล่าสุดไปทุกครั้ง
+      update_(TAB.Submissions, sub.id, {
+        status: SUB_STATUS.APPROVED, quality: quality, pointsPerPerson: perPerson,
+        reviewedBy: s.refId, reviewedAt: new Date().toISOString(),
+      });
+
       const badgesByChild = {};
       const perChild = [];
       const awards = [];   // ยอดที่แต่ละคนได้รับจริง เก็บลงคอลัมน์ awards
@@ -286,14 +296,12 @@ const PARENT_ACTIONS = {
         });
       });
 
-      // บอสประจำสัปดาห์: ถ้าดาเมจรวมถึงเป้าแล้ว แจกรางวัลให้ทุกคน (ครั้งเดียว/สัปดาห์)
+      // ยอดรายคนต้องลงชีตก่อนคิดดาเมจบอส ไม่งั้นงานชิ้นนี้จะถูกนับด้วยยอดกลาง (ไม่รวมโบนัสสตรีค)
+      update_(TAB.Submissions, sub.id, { awards: awards.join(',') });
+
+      // บอสประจำเดือน: ถ้าดาเมจรวมถึงเป้าแล้ว แจกรางวัลให้ทุกคน (ครั้งเดียว/เดือน/บอสหนึ่งตัว)
       const bossWinners = awardBossIfDefeated_(today, cfg);
 
-      update_(TAB.Submissions, sub.id, {
-        status: SUB_STATUS.APPROVED, quality: quality, pointsPerPerson: perPerson,
-        awards: awards.join(','),
-        reviewedBy: s.refId, reviewedAt: new Date().toISOString(),
-      });
       return {
         pointsPerPerson: perPerson, onTime: onTime, teamSize: teamSize,
         windowMultiplier: windowMultiplierFor_(tw, dow),
