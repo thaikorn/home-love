@@ -221,7 +221,10 @@ function ensureSchemaColumns_() {
 // ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
 // เปลี่ยนเลขเวอร์ชันเมื่อมี migration ใหม่ที่ต้องรันซ้ำ
 const REPAIR_FLAG_ = 'MIGRATION_V3';
+const REPAIR_DONE_ = {};   // เช็คแล้วในรอบนี้ — batch เรียก dispatch_ ต่อรายการ ไม่ต้องถาม properties ซ้ำ
 function ensureRepaired_() {
+  if (REPAIR_DONE_.checked) return;
+  REPAIR_DONE_.checked = true;
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty(REPAIR_FLAG_)) return;
   try {
@@ -278,6 +281,7 @@ function repairSheetTypes() {
   repair(HM, toHm_);
   repair(DATE, toDateStr_);
   repair(ISO, toIso_);
+  invalidateAll_(); // เขียนทับทั้งคอลัมน์ตรงๆ ไม่ผ่าน update_ แคชแถวที่อ่านไว้ก่อนหน้าจึงเก่าแล้ว
   Logger.log('repairSheetTypes() เสร็จ — แก้ค่าที่เพี้ยน ' + fixed + ' ช่อง');
   return fixed;
 }

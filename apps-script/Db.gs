@@ -4,23 +4,57 @@
  * ค่าที่เป็น array (teamMembers, timeWindowIds, days) เก็บใน cell เป็น comma-separated
  */
 
+/**
+ * แคชระดับ "การรันหนึ่งครั้ง" — ตัวแปรระดับสคริปต์รีเซ็ตทุกคำขออยู่แล้ว
+ * จึงไม่มีทางค้างข้ามคำขอ และไม่ต้องกังวลว่าจะเห็นข้อมูลเก่าของคำขออื่น
+ *
+ * ทำไมต้องมี: การเรียก SpreadsheetApp แต่ละครั้งคือ round-trip ไปหา Google Sheets
+ * (หลักสิบ–ร้อยมิลลิวินาที) เดิม readAll_() ยิงใหม่ทุกครั้งที่ถูกเรียก และ helper
+ * อย่าง TZ_() → getConfig_() ถูกเรียก "ต่อแถว" ในลูปคิดแต้ม ทำให้หน้าเดียว
+ * ยิงชีตเป็นพันครั้ง — นั่นคือสาเหตุที่แอปเปิดช้า
+ */
+const SS_CACHE_ = {};
+const SHEET_CACHE_ = {};
+const ROWS_CACHE_ = {};
+const CFG_CACHE_ = {};
+
+// ล้างแคชของ tab เดียว — ต้องเรียกทุกครั้งที่เขียนชีต ไม่งั้นจะอ่านค่าเก่ากลับมา
+function invalidate_(tab) {
+  delete ROWS_CACHE_[tab];
+  if (tab === TAB.Config) delete CFG_CACHE_.cfg;
+}
+
+// ล้างทั้งหมด — ใช้หลัง migration/ซ่อมชีตที่แตะหลาย tab รวดเดียว
+function invalidateAll_() {
+  Object.keys(ROWS_CACHE_).forEach(function (t) { delete ROWS_CACHE_[t]; });
+  delete CFG_CACHE_.cfg;
+}
+
 function ss_() {
+  if (SS_CACHE_.ss) return SS_CACHE_.ss;
   const id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
   if (!id) throw new Error('ยังไม่ได้ตั้งค่า SHEET_ID ใน Script Properties');
-  return SpreadsheetApp.openById(id);
+  SS_CACHE_.ss = SpreadsheetApp.openById(id);
+  return SS_CACHE_.ss;
 }
 
 function sheet_(tab) {
+  if (SHEET_CACHE_[tab]) return SHEET_CACHE_[tab];
   const sh = ss_().getSheetByName(tab);
   if (!sh) throw new Error('ไม่พบ tab: ' + tab);
+  SHEET_CACHE_[tab] = sh;
   return sh;
 }
 
-// อ่านทุกแถวของ tab เป็น array ของ object
+/**
+ * อ่านทุกแถวของ tab เป็น array ของ object (แคชไว้ตลอดการรันหนึ่งครั้ง)
+ * ⚠️ object ที่คืนมาใช้ร่วมกันทั้งรอบ — ห้ามแก้ค่าในนั้นตรงๆ
+ *    ถ้าจะเปลี่ยนข้อมูลให้เรียก update_() หรือ Object.assign({}, row, patch)
+ */
 function readAll_(tab) {
+  if (ROWS_CACHE_[tab]) return ROWS_CACHE_[tab];
   const sh = sheet_(tab);
   const values = sh.getDataRange().getValues();
-  if (values.length < 2) return [];
   const cols = SCHEMA[tab];
   const rows = [];
   for (let r = 1; r < values.length; r++) {
@@ -30,15 +64,25 @@ function readAll_(tab) {
     for (let c = 0; c < cols.length; c++) obj[cols[c]] = row[c];
     rows.push(obj);
   }
+  ROWS_CACHE_[tab] = rows;
   return rows;
 }
 
-function findById_(tab, id) {
+// ดัชนี id -> แถว (สร้างจากแคชแถว จึงถูกทิ้งพร้อมกันเมื่อ invalidate_)
+const BYID_CACHE_ = {};
+function byId_(tab) {
   const rows = readAll_(tab);
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i].id) === String(id)) return rows[i];
-  }
-  return null;
+  const hit = BYID_CACHE_[tab];
+  if (hit && hit.rows === rows) return hit.map;
+  const map = {};
+  rows.forEach(function (r) { map[String(r.id)] = r; });
+  BYID_CACHE_[tab] = { rows: rows, map: map };
+  return map;
+}
+
+// findById_ ถูกเรียกในลูป (เช่น ต่อรายการงานหนึ่งชิ้น) จึงต้องเป็นการค้นแบบดัชนี
+function findById_(tab, id) {
+  return byId_(tab)[String(id)] || null;
 }
 
 function where_(tab, predicate) {
@@ -92,6 +136,7 @@ function insert_(tab, obj) {
   if (rowNum > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 1); // ชีตเต็ม — ต่อแถวเพิ่ม
   forceTextFormat_(sh, tab, rowNum);
   sh.getRange(rowNum, 1, 1, cols.length).setValues([row]);
+  invalidate_(tab);
   return obj;
 }
 
@@ -109,6 +154,7 @@ function update_(tab, id, patch) {
     forceTextFormat_(sh, tab, rowNum, [idx + 1]);
     sh.getRange(rowNum, idx + 1).setValue(patch[key]);
   });
+  invalidate_(tab);
   return Object.assign({}, existing, patch);
 }
 
@@ -118,6 +164,7 @@ function remove_(tab, id) {
   const existing = findById_(tab, id);
   if (!existing) return false;
   sh.deleteRow(existing._row);
+  invalidate_(tab); // เลขแถวของทุกแถวที่อยู่ถัดลงไปเลื่อนขึ้นหมด แคชเดิมใช้ไม่ได้แล้ว
   return true;
 }
 
@@ -185,10 +232,14 @@ function newId_(prefix) {
 }
 
 // ---- Config ----
+// ⚠️ คืน object เดียวกันทั้งรอบ — อ่านอย่างเดียว ห้ามแก้ค่าในนั้น
+// (TZ_() เรียกอันนี้ และ TZ_() ถูกเรียกต่อแถวในลูปคิดแต้ม)
 function getConfig_() {
+  if (CFG_CACHE_.cfg) return CFG_CACHE_.cfg;
   const rows = readAll_(TAB.Config);
   const cfg = Object.assign({}, DEFAULT_CONFIG);
   rows.forEach(function (r) { if (r.key) cfg[r.key] = String(r.value); });
+  CFG_CACHE_.cfg = cfg;
   return cfg;
 }
 
@@ -214,4 +265,5 @@ function setConfigMany_(map) {
     forceTextFormat_(sh, TAB.Config, row._row, [vIdx]);
     sh.getRange(row._row, vIdx).setValue(v);
   });
+  invalidate_(TAB.Config);
 }

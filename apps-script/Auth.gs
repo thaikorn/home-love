@@ -51,6 +51,7 @@ function pruneSessions_() {
   }
   // ลบจากล่างขึ้นบน เลขแถวที่ยังไม่ได้ลบจะได้ไม่เลื่อน
   for (let i = doomed.length - 1; i >= 0; i--) sh.deleteRow(doomed[i]);
+  if (doomed.length) invalidate_(TAB.Sessions); // ลบตรงๆ ไม่ผ่าน remove_ ต้องล้างแคชเอง
   return doomed.length;
 }
 
@@ -111,7 +112,7 @@ function logout_(token) {
   const sh = sheet_(TAB.Sessions);
   const values = sh.getDataRange().getValues();
   for (let r = 1; r < values.length; r++) {
-    if (values[r][0] === token) { sh.deleteRow(r + 1); return true; }
+    if (values[r][0] === token) { sh.deleteRow(r + 1); invalidate_(TAB.Sessions); return true; }
   }
   return false;
 }
