@@ -38,25 +38,55 @@ export default function ParentApp({ session, onLogout }) {
 function ReviewQueue() {
   const [sel, setSel] = useState(null);
   const { data: queue, load, view } = useLoad(useCallback(() => call('parent.reviewQueue'), []));
+  const [history, setHistory] = useState([]);
+  const loadHistory = useCallback(() => { call('parent.reviewHistory').then(setHistory).catch(() => {}); }, []);
+  useEffect(() => { loadHistory(); }, [loadHistory]);
   if (view) return view;
 
+  function onReviewed() {
+    setSel(null);
+    load();
+    loadHistory();
+  }
+
   return (
-    <div className="card">
-      <h2>คิวตรวจงาน ({queue.length})</h2>
-      {queue.length === 0 ? <Empty text="ไม่มีงานรอตรวจ 🎉" /> : queue.map((s) => (
-        <div key={s.id} className="item">
-          {s.photoUrl
-            ? <img className="thumb" src={s.photoUrl} alt="" referrerPolicy="no-referrer" onClick={() => window.open(s.photoOpenUrl || s.photoUrl, '_blank')} />
-            : <div className="thumb" />}
-          <div className="grow">
-            <div className="title">{s.choreIcon} {s.choreName}</div>
-            <div className="sub">โดย {s.submittedByName}{s.teamMembers.length > 1 ? ` +ทีม ${s.teamMembers.length} คน` : ''}</div>
-            <div className="sub">{fmtDate(s.submittedAt)} · ฐาน {s.basePoints} แต้ม</div>
+    <div>
+      <div className="card">
+        <h2>คิวตรวจงาน ({queue.length})</h2>
+        {queue.length === 0 ? <Empty text="ไม่มีงานรอตรวจ 🎉" /> : queue.map((s) => (
+          <div key={s.id} className="item">
+            {s.photoUrl
+              ? <img className="thumb" src={s.photoUrl} alt="" referrerPolicy="no-referrer" onClick={() => window.open(s.photoOpenUrl || s.photoUrl, '_blank')} />
+              : <div className="thumb" />}
+            <div className="grow">
+              <div className="title">{s.choreIcon} {s.choreName}</div>
+              <div className="sub">โดย {s.submittedByName}{s.teamMembers.length > 1 ? ` +ทีม ${s.teamMembers.length} คน` : ''}</div>
+              <div className="sub">{fmtDate(s.submittedAt)} · ฐาน {s.basePoints} แต้ม</div>
+            </div>
+            <button className="btn sm" onClick={() => setSel(s)}>ตรวจ</button>
           </div>
-          <button className="btn sm" onClick={() => setSel(s)}>ตรวจ</button>
+        ))}
+        {sel && <ReviewModal sub={sel} onClose={() => setSel(null)} onDone={onReviewed} />}
+      </div>
+
+      {history.length > 0 && (
+        <div className="card mt">
+          <h2>ประวัติการตรวจล่าสุด</h2>
+          {history.map((h) => (
+            <div key={h.id} className="item">
+              <div className="grow">
+                <div className="title">{h.choreIcon} {h.choreName} <StatusChip status={h.status} /></div>
+                <div className="sub">
+                  {h.teamMembers.map((m) => h.status === 'ผ่าน' ? `${m.name} +${m.points}` : m.name).join(', ')}
+                  {h.status === 'ผ่าน' && ` · คุณภาพ ${h.quality}%`}
+                </div>
+                {h.status === 'ตีกลับ' && h.rejectReason && <div className="sub muted">เหตุผล: {h.rejectReason}</div>}
+                <div className="sub muted">{fmtDate(h.reviewedAt)}</div>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
-      {sel && <ReviewModal sub={sel} onClose={() => setSel(null)} onDone={() => { setSel(null); load(); }} />}
+      )}
     </div>
   );
 }
