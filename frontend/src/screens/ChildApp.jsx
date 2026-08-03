@@ -151,6 +151,24 @@ function Home() {
         </div>
       )}
 
+      {board.length > 1 && (
+        <div className="card">
+          <h2>👑 กระดานผู้นำสะสม</h2>
+          {board.slice().sort(function (a, b) { return b.points - a.points; }).map((c, i) => (
+            <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
+              <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
+              <div className="face">{c.avatar}</div>
+              <div className="who">
+                <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
+                <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
+              </div>
+              <div className="pts">{c.points}</div>
+            </div>
+          ))}
+          <p className="muted" style={{ marginBottom: 0 }}>นับแต้มสะสมทั้งหมดตั้งแต่เริ่มเล่น</p>
+        </div>
+      )}
+
       <div className="card">
         <h2>🏅 เหรียญที่สะสมได้</h2>
         {st.badges.length === 0 ? <Empty text="ยังไม่มีเหรียญ — ทำงานต่อเนื่องเพื่อรับเหรียญ!" /> : (
