@@ -246,6 +246,16 @@ const PARENT_ACTIONS = {
       .sort(byNewest_('submittedAt'));
   },
 
+  // ประวัติงานที่ตรวจไปแล้ว (ผ่าน/ตีกลับ) ล่าสุดก่อน — จำกัด 50 รายการกันข้อมูลบวมเมื่อสะสมนาน
+  'parent.reviewHistory': function () {
+    return where_(TAB.Submissions, function (x) {
+      return x.status === SUB_STATUS.APPROVED || x.status === SUB_STATUS.REJECTED;
+    })
+      .map(mapSubmissionHistory_)
+      .sort(byNewest_('reviewedAt'))
+      .slice(0, 50);
+  },
+
   // อนุมัติงาน: {submissionId, quality(10-100)}
   'parent.approve': function (s, p) {
     return withLock_(function () {
@@ -449,6 +459,20 @@ function mapSubmissionFull_(x, cfg0) {
       windowMultiplier: windowMultiplierFor_(tw, dow),
       teamSize: members.length || 1,
     },
+  };
+}
+// สรุปงานที่ตรวจไปแล้วหนึ่งชิ้น — ใช้กับ parent.reviewHistory
+function mapSubmissionHistory_(x) {
+  const chore = findById_(TAB.Chores, x.choreId) || {};
+  const members = toArr_(x.teamMembers).map(function (id) {
+    const c = findById_(TAB.Children, id) || {};
+    return { id: id, name: c.name, points: awardFor_(x, id) };
+  });
+  return {
+    id: x.id, choreName: chore.name, choreIcon: chore.icon,
+    status: x.status, quality: x.quality, rejectReason: x.rejectReason,
+    submittedAt: toIso_(x.submittedAt), reviewedAt: toIso_(x.reviewedAt),
+    teamMembers: members,
   };
 }
 function mapRedemption_(r) {
