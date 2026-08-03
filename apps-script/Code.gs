@@ -33,7 +33,7 @@ function servePage_() {
   let inject = '';
   try {
     const url = ScriptApp.getService().getUrl();
-    if (url) inject = '<script>window.__API_URL__=' + JSON.stringify(url) + ';</script>';
+    if (url) inject = '<script>window.__API_URL__=' + JSON.stringify(url) + ';</script>' + BOOT_SCRIPT_;
   } catch (err) {
     Logger.log('ไม่สามารถอ่าน web app URL: ' + (err.message || err));
   }
@@ -44,6 +44,50 @@ function servePage_() {
   return HtmlService.createHtmlOutput(html)
     .setTitle('Home Love — งานบ้านเก็บแต้ม')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+}
+
+/**
+ * สคริปต์เล็กๆ ที่ฝังไว้ใน <head> — ยิงข้อมูลหน้าแรกทันทีที่หน้าเปิด
+ *
+ * ทำไม: bundle ของแอปหนัก ~225KB มือถือเด็กใช้เวลา parse + mount React อยู่พักหนึ่ง
+ * กว่าจะได้เริ่มยิงคำขอแรก ช่วงนั้นเน็ตว่างเปล่าเปลืองไปเฉยๆ ตัวนี้ยิงคู่ขนานไปเลย
+ * แล้ว api.js ฝั่งโน้นจะมากิน promise นี้แทนการยิงใหม่ (ดู BOOT ใน api.js)
+ *
+ * ห้ามทำให้หน้าพังไม่ว่ากรณีใด — ล้ม/ช้า/localStorage ใช้ไม่ได้ ก็แค่คืน null
+ * แล้วแอปถอยไปยิงเองตามปกติ
+ */
+const BOOT_SCRIPT_ = '<script>(function(){try{' +
+  'var u=window.__API_URL__;if(!u||!window.fetch)return;' +
+  'var t="";try{t=localStorage.getItem("homelove_token")||"";}catch(e){}' +
+  'var req=fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},' +
+  'body:JSON.stringify({action:"boot",token:t,params:{}})})' +
+  '.then(function(r){return r.json();})' +
+  '.then(function(j){return j&&j.ok?j.data:null;}).catch(function(){return null;});' +
+  'var late=new Promise(function(res){setTimeout(function(){res(null);},15000);});' +
+  'window.__BOOT__=Promise.race([req,late]);' +
+  '}catch(e){window.__BOOT__=null;}})();</script>';
+
+/**
+ * boot — ข้อมูลชุดแรกที่หน้าจอต้องใช้ รวมมาให้ในรอบเดียวตามบทบาทของ token
+ * คืนเป็น map ของ action -> data เพื่อให้ฝั่งหน้าเว็บจับคู่กับ call() ที่มันจะเรียกได้ตรงๆ
+ * action ไหนพัง ก็ตัดออกจาก map ไปเฉยๆ — หน้าเว็บจะยิงตัวนั้นเองทีหลัง
+ */
+function boot_(token) {
+  const session = getSession_(token);
+  const out = { 'auth.me': session ? { role: session.role, refId: session.refId, name: session.name } : null };
+  const wanted = !session
+    ? [['auth.childList', publicChildren_]]   // ยังไม่ล็อกอิน — หน้าเลือกเด็กใช้รายการนี้
+    : session.role === 'child'
+      ? [['child.counts', CHILD_ACTIONS['child.counts']],
+         ['child.state', CHILD_ACTIONS['child.state']],
+         ['child.leaderboard', CHILD_ACTIONS['child.leaderboard']]]
+      : [['parent.counts', PARENT_ACTIONS['parent.counts']],
+         ['parent.reviewQueue', PARENT_ACTIONS['parent.reviewQueue']]];
+  wanted.forEach(function (pair) {
+    try { out[pair[0]] = pair[1](session, {}); }
+    catch (err) { Logger.log('boot: ' + pair[0] + ' ล้มเหลว — ' + (err.message || err)); }
+  });
+  return out;
 }
 
 function doPost(e) {
@@ -82,6 +126,9 @@ function dispatch_(action, token, params) {
       catch (err) { return { ok: false, error: String(err.message || err) }; }
     });
   }
+
+  // ข้อมูลชุดแรกของหน้าจอ รวมรอบเดียว — หน้าเว็บยิงตัวนี้ก่อน React จะบูตเสร็จด้วยซ้ำ
+  if (action === 'boot') return boot_(token);
 
   // --- login (ไม่ต้องมี token) ---
   if (action === 'auth.childList') return publicChildren_();

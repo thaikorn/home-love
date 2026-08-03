@@ -17,16 +17,21 @@ const SS_CACHE_ = {};
 const SHEET_CACHE_ = {};
 const ROWS_CACHE_ = {};
 const CFG_CACHE_ = {};
+// รูปร่างของชีตที่รู้มาแล้วจากการอ่าน: { header: [...], lastRow: n, maxRows: n }
+const SHEET_META_ = {};
 
 // ล้างแคชของ tab เดียว — ต้องเรียกทุกครั้งที่เขียนชีต ไม่งั้นจะอ่านค่าเก่ากลับมา
+// จำนวนแถวอาจขยับ (insert/remove) จึงต้องลืมไปด้วย — หัวตารางไม่เปลี่ยนจึงเก็บไว้ได้
 function invalidate_(tab) {
   delete ROWS_CACHE_[tab];
+  if (SHEET_META_[tab]) delete SHEET_META_[tab].lastRow;
   if (tab === TAB.Config) delete CFG_CACHE_.cfg;
 }
 
 // ล้างทั้งหมด — ใช้หลัง migration/ซ่อมชีตที่แตะหลาย tab รวดเดียว
 function invalidateAll_() {
   Object.keys(ROWS_CACHE_).forEach(function (t) { delete ROWS_CACHE_[t]; });
+  Object.keys(SHEET_META_).forEach(function (t) { delete SHEET_META_[t]; });
   delete CFG_CACHE_.cfg;
 }
 
@@ -55,6 +60,11 @@ function readAll_(tab) {
   if (ROWS_CACHE_[tab]) return ROWS_CACHE_[tab];
   const sh = sheet_(tab);
   const values = sh.getDataRange().getValues();
+  // getDataRange คลุมถึงแถว/คอลัมน์สุดท้ายที่มีข้อมูลพอดี — เก็บหัวตารางกับจำนวนแถวไว้ใช้ต่อ
+  // จะได้ไม่ต้องยิง getRange(หัวตาราง)/getLastRow() ซ้ำตอนเขียน (ดู ensureCols_ / insert_)
+  const meta = SHEET_META_[tab] || (SHEET_META_[tab] = {});
+  meta.header = values[0] || [];
+  meta.lastRow = values.length;
   const cols = SCHEMA[tab];
   const rows = [];
   for (let r = 1; r < values.length; r++) {
@@ -95,19 +105,25 @@ function where_(tab, predicate) {
  * จึงไม่ต้องไปรัน setup() ด้วยมือทุกครั้งที่ schema ขยับ
  */
 const SCHEMA_CHECKED_ = {};
+function headerMatches_(header, cols) {
+  if (!header || header.length < cols.length) return false;
+  for (let i = 0; i < cols.length; i++) {
+    if (String(header[i] || '') !== cols[i]) return false;
+  }
+  return true;
+}
 function ensureCols_(sh, tab) {
   if (SCHEMA_CHECKED_[tab]) return;
-  SCHEMA_CHECKED_[tab] = true;
   const cols = SCHEMA[tab];
+  // ถ้าเพิ่งอ่าน tab นี้ไป หัวตารางติดมากับข้อมูลอยู่แล้ว — ตรงกับ SCHEMA ก็จบ ไม่ต้องยิงชีตเลย
+  // (ทางเขียนเกือบทุกเส้นอ่านข้อมูลก่อนอยู่แล้ว เช่น findById_ ก่อน update_)
+  const known = SHEET_META_[tab];
+  if (known && headerMatches_(known.header, cols)) { SCHEMA_CHECKED_[tab] = true; return; }
+  SCHEMA_CHECKED_[tab] = true;
   const max = sh.getMaxColumns();
   if (max < cols.length) sh.insertColumnsAfter(max, cols.length - max);
   const header = sh.getRange(1, 1, 1, cols.length).getValues()[0];
-  for (let i = 0; i < cols.length; i++) {
-    if (String(header[i] || '') !== cols[i]) {
-      sh.getRange(1, 1, 1, cols.length).setValues([cols]);
-      return;
-    }
-  }
+  if (!headerMatches_(header, cols)) sh.getRange(1, 1, 1, cols.length).setValues([cols]);
 }
 
 // ดัชนีคอลัมน์ (1-based) ที่ต้องบังคับเป็นข้อความล้วนของ tab นั้น
@@ -118,12 +134,19 @@ function textColIdx_(tab) {
     .filter(function (i) { return i > 0; });
 }
 
-// ตั้ง number format เป็นข้อความล้วน "ก่อน" เขียนค่า ไม่งั้น Sheet แปลงค่าให้เอง
-function forceTextFormat_(sh, tab, rowNum, onlyCols) {
-  textColIdx_(tab).forEach(function (i) {
-    if (onlyCols && onlyCols.indexOf(i) < 0) return;
-    sh.getRange(rowNum, i).setNumberFormat('@');
+/**
+ * รวมเลขคอลัมน์ที่ติดกันเป็นช่วง [{from,to}] (0-based, ปลายทั้งสองรวมด้วย)
+ * เขียนชีตทีละช่วงแทนทีละช่อง — การเขียนแต่ละครั้งคือ round-trip ไปหา Google Sheets
+ * การอนุมัติงานหนึ่งชิ้นเดิมยิงเป็นสิบครั้งเพราะเขียนทีละฟิลด์
+ */
+function colRuns_(idx) {
+  const runs = [];
+  idx.slice().sort(function (a, b) { return a - b; }).forEach(function (i) {
+    const last = runs[runs.length - 1];
+    if (last && i === last.to + 1) last.to = i;
+    else if (!last || i !== last.to) runs.push({ from: i, to: i });
   });
+  return runs;
 }
 
 // เพิ่มแถวใหม่ (obj ต้องมี key ตาม SCHEMA; ที่ขาดจะเว้นว่าง)
@@ -132,11 +155,31 @@ function insert_(tab, obj) {
   ensureCols_(sh, tab);
   const cols = SCHEMA[tab];
   const row = cols.map(function (c) { return obj[c] === undefined ? '' : obj[c]; });
-  const rowNum = sh.getLastRow() + 1;
-  if (rowNum > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 1); // ชีตเต็ม — ต่อแถวเพิ่ม
-  forceTextFormat_(sh, tab, rowNum);
+  // จำนวนแถวเรารู้อยู่แล้วถ้าเพิ่งอ่าน tab นี้ไป และรู้แน่นอนหลังเพิ่มแถวเอง
+  // — ไม่งั้นการเพิ่มหลายแถวติดกัน (เช่นแจกรางวัลบอสให้ลูกทุกคน) จะยิงถาม getLastRow ซ้ำทุกรอบ
+  const meta = SHEET_META_[tab] || (SHEET_META_[tab] = {});
+  if (meta.lastRow === undefined) meta.lastRow = sh.getLastRow();
+  if (meta.maxRows === undefined) meta.maxRows = sh.getMaxRows();
+  const rowNum = meta.lastRow + 1;
+  if (rowNum > meta.maxRows) { sh.insertRowsAfter(meta.maxRows, 1); meta.maxRows += 1; } // ชีตเต็ม — ต่อแถวเพิ่ม
+  // ตั้ง number format เป็นข้อความล้วน "ก่อน" เขียนค่า ไม่งั้น Sheet แปลงค่าให้เอง
+  colRuns_(textColIdx_(tab).map(function (i) { return i - 1; })).forEach(function (r) {
+    sh.getRange(rowNum, r.from + 1, 1, r.to - r.from + 1).setNumberFormat('@');
+  });
   sh.getRange(rowNum, 1, 1, cols.length).setValues([row]);
-  invalidate_(tab);
+  meta.lastRow = rowNum; // เพิ่งเขียนเอง จึงรู้แน่ว่าแถวสุดท้ายอยู่ตรงไหน
+
+  // ต่อแถวใหม่เข้าแคชแทนการทิ้งแคชทั้ง tab — ไม่งั้นการอ่านครั้งถัดไปต้องดึงชีตใหม่ทั้งใบ
+  // (เช่นแจกรางวัลบอสให้ลูกทีละคน: เพิ่ม 1 แถว แล้วอ่าน Quests ใหม่ทั้งตาราง สลับกันไปเรื่อยๆ)
+  const cached = ROWS_CACHE_[tab];
+  if (cached) {
+    const fresh = { _row: rowNum };
+    cols.forEach(function (c, i) { fresh[c] = row[i]; });
+    cached.push(fresh);
+    const byId = BYID_CACHE_[tab];
+    if (byId && byId.rows === cached) byId.map[String(fresh.id)] = fresh;
+  }
+  if (tab === TAB.Config) delete CFG_CACHE_.cfg;
   return obj;
 }
 
@@ -148,13 +191,41 @@ function update_(tab, id, patch) {
   const existing = findById_(tab, id);
   if (!existing) throw new Error('ไม่พบ id ' + id + ' ใน ' + tab);
   const rowNum = existing._row;
+  const idx = [];
   Object.keys(patch).forEach(function (key) {
-    const idx = cols.indexOf(key);
-    if (idx < 0) return;
-    forceTextFormat_(sh, tab, rowNum, [idx + 1]);
-    sh.getRange(rowNum, idx + 1).setValue(patch[key]);
+    const i = cols.indexOf(key);
+    if (i >= 0) idx.push(i);
   });
-  invalidate_(tab);
+  if (!idx.length) return Object.assign({}, existing, patch);
+
+  const isText = {};
+  textColIdx_(tab).forEach(function (i) { isText[i - 1] = true; });
+  colRuns_(idx.filter(function (i) { return isText[i]; })).forEach(function (r) {
+    sh.getRange(rowNum, r.from + 1, 1, r.to - r.from + 1).setNumberFormat('@');
+  });
+  colRuns_(idx).forEach(function (r) {
+    const vals = [];
+    for (let c = r.from; c <= r.to; c++) {
+      const v = patch[cols[c]];
+      vals.push(v === undefined ? '' : v);
+    }
+    sh.getRange(rowNum, r.from + 1, 1, vals.length).setValues([vals]);
+  });
+
+  /**
+   * ปรับค่าในแคชให้ตรงกับที่เพิ่งเขียนลงชีต แทนการทิ้งแคชทั้ง tab
+   *
+   * ทางเขียนของเราสลับ "เขียนแล้วอ่าน" ตลอด (อนุมัติงานทีมสามคน = เขียน Children 6 ครั้ง
+   * ซึ่งเดิมทำให้ต้องดึงตาราง Children ใหม่ทั้งใบ 9 ครั้งในคำขอเดียว)
+   * เรารู้อยู่แล้วว่าเปลี่ยนอะไรไป จึงแก้ตามได้เลย — ค่าที่ได้เท่ากับการอ่านกลับมาใหม่
+   *
+   * ⚠️ กฎเดิมยังอยู่: โค้ดนอก Db.gs ห้ามแก้ค่าใน object ที่ readAll_/findById_ คืนมา
+   *    ให้เปลี่ยนผ่าน update_() เท่านั้น มิฉะนั้นแคชกับชีตจะไม่ตรงกัน
+   */
+  idx.forEach(function (i) {
+    const v = patch[cols[i]];
+    existing[cols[i]] = v === undefined ? '' : v;
+  });
   return Object.assign({}, existing, patch);
 }
 
@@ -250,6 +321,9 @@ function configNum_(cfg, key) {
 /**
  * เขียนค่า Config หลายคีย์รวดเดียว (อ่านชีตครั้งเดียว เขียนเฉพาะคีย์ที่ค่าเปลี่ยนจริง)
  * คีย์ที่ยังไม่มีในชีตจะถูกเพิ่มให้ — Config ไม่มีคอลัมน์ id จึงใช้ update_ ไม่ได้
+ *
+ * หน้าตั้งค่าส่งค่ามาทีเดียวหลายสิบคีย์ ถ้าเขียนทีละช่องคือยิงชีตหลายสิบครั้ง
+ * จึงเขียนคอลัมน์ value เป็นช่วงเดียวที่คลุมทุกแถวที่ต้องแก้ (แถวที่ไม่ได้แก้เขียนค่าเดิมกลับไป)
  */
 function setConfigMany_(map) {
   const sh = sheet_(TAB.Config);
@@ -257,13 +331,29 @@ function setConfigMany_(map) {
   const vIdx = SCHEMA[TAB.Config].indexOf('value') + 1;
   const byKey = {};
   readAll_(TAB.Config).forEach(function (r) { byKey[String(r.key)] = r; });
+
+  const changed = {};   // เลขแถว -> ค่าใหม่
+  const missing = [];
+  let lo = Infinity, hi = -Infinity;
   Object.keys(map).forEach(function (k) {
     const v = String(map[k]);
     const row = byKey[k];
-    if (!row) { insert_(TAB.Config, { key: k, value: v }); return; }
+    if (!row) { missing.push({ key: k, value: v }); return; }
     if (String(row.value) === v) return;
-    forceTextFormat_(sh, TAB.Config, row._row, [vIdx]);
-    sh.getRange(row._row, vIdx).setValue(v);
+    changed[row._row] = v;
+    if (row._row < lo) lo = row._row;
+    if (row._row > hi) hi = row._row;
   });
+
+  if (hi >= lo) {
+    const rng = sh.getRange(lo, vIdx, hi - lo + 1, 1);
+    const vals = rng.getValues();
+    for (let i = 0; i < vals.length; i++) {
+      if (Object.prototype.hasOwnProperty.call(changed, lo + i)) vals[i][0] = changed[lo + i];
+    }
+    rng.setNumberFormat('@'); // ทั้งคอลัมน์ value เป็นข้อความล้วนอยู่แล้ว (TEXT_COLS)
+    rng.setValues(vals);
+  }
+  missing.forEach(function (m) { insert_(TAB.Config, m); });
   invalidate_(TAB.Config);
 }
