@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { call, getToken, setToken } from './api.js';
+import { call, getToken, setToken, getCachedSession, setCachedSession } from './api.js';
 import Login from './screens/Login.jsx';
 import ChildApp from './screens/ChildApp.jsx';
 import ParentApp from './screens/ParentApp.jsx';
@@ -14,30 +14,50 @@ export default function App() {
 }
 
 function Root() {
-  const [session, setSession] = useState(null); // {role, refId, name}
-  const [loading, setLoading] = useState(true);
+  /**
+   * เดิมต้องรอ auth.me ตอบก่อนถึงจะรู้ว่าเป็นเด็กหรือผู้ปกครอง แล้วค่อยเริ่มโหลดข้อมูลหน้าแรก
+   * = รอ Apps Script สองรอบต่อกันกว่าจะเห็นอะไร ทั้งที่รอบแรกได้มาแค่ชื่อกับบทบาท
+   *
+   * ตอนนี้จำ session ล่าสุดไว้ในเครื่อง เข้าหน้าจริงได้เลย แล้วยิง auth.me
+   * ตามไปตรวจแบบไม่บล็อกหน้าจอ (ไปรวมอยู่ใน batch เดียวกับข้อมูลหน้าแรกพอดี)
+   * token เสีย/หมดอายุเมื่อไหร่ก็เด้งกลับหน้าล็อกอินตอนนั้น
+   */
+  const cached = getToken() ? getCachedSession() : null;
+  const [session, setSession] = useState(cached); // {role, refId, name}
+  const [loading, setLoading] = useState(!!getToken() && !cached);
 
   useEffect(() => {
-    (async () => {
-      if (!getToken()) { setLoading(false); return; }
-      try {
-        const me = await call('auth.me');
+    if (!getToken()) return;
+    let alive = true;
+    call('auth.me').then(
+      (me) => {
+        if (!alive) return;
+        if (!me) { setToken(''); setCachedSession(null); }
+        else setCachedSession(me);
         setSession(me);
-      } catch {
-        setToken('');
-      }
-      setLoading(false);
-    })();
-  }, []);
+        setLoading(false);
+      },
+      () => {
+        if (!alive) return;
+        // เน็ตสะดุดทั้งที่มี session เก่าอยู่ — ปล่อยให้ใช้หน้าเดิมต่อ อย่าเตะออก
+        if (!cached) { setToken(''); setSession(null); }
+        setLoading(false);
+      },
+    );
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onLogin = useCallback((result) => {
     setToken(result.token);
-    setSession({ role: result.role, refId: result.refId, name: result.name });
+    const me = { role: result.role, refId: result.refId, name: result.name };
+    setCachedSession(me);
+    setSession(me);
   }, []);
 
   const onLogout = useCallback(async () => {
     try { await call('auth.logout'); } catch { /* ignore */ }
     setToken('');
+    setCachedSession(null);
     setSession(null);
   }, []);
 
