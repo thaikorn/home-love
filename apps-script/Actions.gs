@@ -96,7 +96,9 @@ const CHILD_ACTIONS = {
 
   // ส่งงาน: {choreId, timeWindowId, photo(dataUrl), teamMemberIds:[]}
   'child.submit': function (s, p) {
-    return withLock_(function () {
+    // mailNewSubmission_ ยิงออกไปหา Gmail API ซึ่งช้ากว่าเขียนชีตมาก — ต้องอยู่นอก withLock_
+    // ไม่งั้นทุกคำขอที่แตะแต้ม/สถานะของทั้งบ้าน (ล็อกเดียวกันทั้งสคริปต์) ต้องรอคิวตามอีเมลไปด้วย
+    const result = withLock_(function () {
       const chore = findById_(TAB.Chores, p.choreId);
       if (!chore || !toBool_(chore.active)) throw new Error('ไม่พบงานหรืองานถูกปิด');
       const tw = findById_(TAB.TimeWindows, p.timeWindowId);
@@ -117,9 +119,10 @@ const CHILD_ACTIONS = {
         pointsPerPerson: '', reviewedBy: '', reviewedAt: '',
       };
       insert_(TAB.Submissions, sub);
-      mailNewSubmission_(findById_(TAB.Children, s.refId), chore, up.url);
-      return { id: sub.id, status: sub.status };
+      return { sub: sub, child: findById_(TAB.Children, s.refId), chore: chore, photoUrl: up.url };
     });
+    mailNewSubmission_(result.child, result.chore, result.photoUrl);
+    return { id: result.sub.id, status: result.sub.status };
   },
 
   // ประวัติการส่งงานของเด็ก (ล่าสุดก่อน)
@@ -173,7 +176,8 @@ const CHILD_ACTIONS = {
 
   // ขอแลกของ: {rewardId} — หักแต้มทันที (จอง)
   'child.redeem': function (s, p) {
-    return withLock_(function () {
+    // เหตุผลเดียวกับ child.submit — ส่งเมลนอกล็อก อย่าให้ทั้งบ้านรอคิวตามอีเมล
+    const result = withLock_(function () {
       const reward = findById_(TAB.Rewards, p.rewardId);
       if (!reward || !toBool_(reward.active)) throw new Error('ไม่พบของรางวัลหรือถูกปิด');
       const cost = Number(reward.cost) || 0;
@@ -185,9 +189,10 @@ const CHILD_ACTIONS = {
         requestedAt: new Date().toISOString(), decidedAt: '',
       };
       insert_(TAB.Redemptions, red);
-      mailNewRedemption_(findById_(TAB.Children, s.refId), reward);
-      return { id: red.id, status: red.status, points: (Number(findById_(TAB.Children, s.refId).points) || 0) };
+      return { red: red, child: findById_(TAB.Children, s.refId), reward: reward };
     });
+    mailNewRedemption_(result.child, result.reward);
+    return { id: result.red.id, status: result.red.status, points: Number(result.child.points) || 0 };
   },
 
   'child.redemptions': function (s) {
