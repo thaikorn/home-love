@@ -45,10 +45,14 @@ function driveFileId_(v) {
  * ลิงก์สำหรับฝังใน <img>
  * ต้องเป็น /thumbnail เท่านั้น — uc?export=view ที่เคยใช้ Google ปิดการฝังข้ามเว็บไปแล้ว
  * ฝังแล้วได้กล่องว่าง (หน้าตรวจงานของผู้ปกครองเลยไม่เห็นรูป)
+ *
+ * sz=w1000 พอสำหรับที่ที่ฝังจริง (ลิสต์งาน .thumb 56px, กล่องรูปเต็ม .photo สูงไม่เกิน 260px)
+ * เดิม w1600 โหลดรูปใหญ่เกินจอทุกจุดที่ใช้ — คลิกรูปเปิด driveOpenUrl_ (ต้นฉบับเต็ม) ให้อยู่แล้ว
+ * ไม่ได้พึ่ง <img> นี้เป็นตัวดูละเอียด
  */
 function drivePhotoSrc_(v) {
   const id = driveFileId_(v);
-  return id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1600' : '';
+  return id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1000' : '';
 }
 
 // หน้าเปิดดูไฟล์เต็มใน Drive (กดจากในแอป/อีเมล)
