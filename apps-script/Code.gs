@@ -82,7 +82,8 @@ function boot_(token) {
          ['child.state', CHILD_ACTIONS['child.state']],
          ['child.leaderboard', CHILD_ACTIONS['child.leaderboard']]]
       : [['parent.counts', PARENT_ACTIONS['parent.counts']],
-         ['parent.reviewQueue', PARENT_ACTIONS['parent.reviewQueue']]];
+         ['parent.reviewQueue', PARENT_ACTIONS['parent.reviewQueue']],
+         ['parent.reviewHistory', PARENT_ACTIONS['parent.reviewHistory']]];
   wanted.forEach(function (pair) {
     try { out[pair[0]] = pair[1](session, {}); }
     catch (err) { Logger.log('boot: ' + pair[0] + ' ล้มเหลว — ' + (err.message || err)); }
