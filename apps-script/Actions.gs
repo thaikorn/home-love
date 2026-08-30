@@ -137,6 +137,7 @@ const CHILD_ACTIONS = {
   },
 
   // กระดานผู้นำพี่น้อง — เรียงตามแต้มที่ทำได้สัปดาห์นี้
+  // points = แต้มคงเหลือ (ลดเมื่อแลกของ) · xp = แต้มสะสมทั้งหมด (ไม่มีวันลด) — กระดานสะสมฝั่งเด็กใช้ xp
   'child.leaderboard': function () {
     const cfg = getConfig_();
     const week = weekPointsByChild_(mondayOf_(now_().date));
@@ -145,7 +146,7 @@ const CHILD_ACTIONS = {
         const lv = levelFromXp_(childXp_(c.id), cfg);
         return {
           id: c.id, name: c.name, avatar: c.avatar, color: c.color,
-          weekPoints: week[c.id] || 0, points: Number(c.points) || 0,
+          weekPoints: week[c.id] || 0, points: Number(c.points) || 0, xp: lv.xp,
           streakCurrent: Number(c.streakCurrent) || 0,
           level: lv.level, title: lv.title, titleIcon: lv.titleIcon,
         };

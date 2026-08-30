@@ -89,7 +89,8 @@ body {
 .card h2 { margin: 0 0 10px; font-size: 16px; font-weight: 800; color: var(--ink); }
 
 /* Stats */
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+/* auto-fit: 4 ช่องบนมือถือตกเป็น 2×2 เอง · หน้าร้าน 2 ช่องก็เต็มความกว้างเสมอ */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 10px; }
 .stat {
   background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
   border: 2px solid var(--line); border-radius: var(--radius);
