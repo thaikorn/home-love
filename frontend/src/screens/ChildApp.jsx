@@ -49,6 +49,30 @@ function SoundToggle() {
   );
 }
 
+// แต้มสะสมทั้งหมดของเด็กหนึ่งคน — ถอยไปใช้แต้มคงเหลือถ้า payload เก่ายังค้างตอน deploy คาบเกี่ยว
+const totalOf = (c) => (c.xp != null ? c.xp : c.points);
+
+// กระดานผู้นำ — สัปดาห์นี้กับสะสมใช้หน้าตาเดียวกัน ต่างแค่ลำดับกับเลขที่โชว์
+function LeaderCard({ title, rows, score, note }) {
+  return (
+    <div className="card">
+      <h2>{title}</h2>
+      {rows.map((c, i) => (
+        <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
+          <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
+          <div className="face">{c.avatar}</div>
+          <div className="who">
+            <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
+            <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
+          </div>
+          <div className="pts">{score(c)}</div>
+        </div>
+      ))}
+      <p className="muted" style={{ marginBottom: 0 }}>{note}</p>
+    </div>
+  );
+}
+
 function Home() {
   const toast = useToast();
   const { data, load, view } = useLoad(useCallback(
@@ -87,6 +111,7 @@ function Home() {
 
       <div className="stats">
         <div className="stat"><div className="num">{st.points}</div><div className="lbl">◆ แต้มที่มี</div></div>
+        <div className="stat"><div className="num">{lv.xp}</div><div className="lbl">★ สะสมทั้งหมด</div></div>
         <div className="stat"><div className="num">🔥{st.streakCurrent}</div><div className="lbl">ทำต่อเนื่อง (วัน)</div></div>
         <div className="stat"><div className="num">{st.streakMax}</div><div className="lbl">สถิติสูงสุด</div></div>
       </div>
@@ -134,39 +159,20 @@ function Home() {
       </div>
 
       {board.length > 1 && (
-        <div className="card">
-          <h2>🏆 กระดานผู้นำสัปดาห์นี้</h2>
-          {board.map((c, i) => (
-            <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
-              <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
-              <div className="face">{c.avatar}</div>
-              <div className="who">
-                <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
-                <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
-              </div>
-              <div className="pts">{c.weekPoints}</div>
-            </div>
-          ))}
-          <p className="muted" style={{ marginBottom: 0 }}>นับแต้มที่ทำได้ตั้งแต่วันจันทร์</p>
-        </div>
-      )}
-
-      {board.length > 1 && (
-        <div className="card">
-          <h2>👑 กระดานผู้นำสะสม</h2>
-          {board.slice().sort(function (a, b) { return b.points - a.points; }).map((c, i) => (
-            <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
-              <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
-              <div className="face">{c.avatar}</div>
-              <div className="who">
-                <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
-                <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
-              </div>
-              <div className="pts">{c.points}</div>
-            </div>
-          ))}
-          <p className="muted" style={{ marginBottom: 0 }}>นับแต้มสะสมทั้งหมดตั้งแต่เริ่มเล่น</p>
-        </div>
+        <>
+          <LeaderCard
+            title="🏆 กระดานผู้นำสัปดาห์นี้"
+            rows={board}
+            score={(c) => c.weekPoints}
+            note="นับแต้มที่ทำได้ตั้งแต่วันจันทร์"
+          />
+          <LeaderCard
+            title="👑 กระดานผู้นำสะสม"
+            rows={board.slice().sort(function (a, b) { return totalOf(b) - totalOf(a); })}
+            score={totalOf}
+            note="นับแต้มที่หามาได้ทั้งหมด — แลกของรางวัลแล้วไม่ลด"
+          />
+        </>
       )}
 
       <div className="card">
@@ -336,10 +342,10 @@ function Shop() {
   // สามชุดนี้ต้องใช้พร้อมกัน — ส่งไปรอบเดียว
   const { data, load, view } = useLoad(useCallback(
     () => callBatch([['child.rewards'], ['child.redemptions'], ['child.state']])
-      .then(([rw, rd, st]) => ({ rewards: rw, reds: rd, points: st.points })), []));
+      .then(([rw, rd, st]) => ({ rewards: rw, reds: rd, points: st.points, xp: (st.level && st.level.xp) || 0 })), []));
 
   if (view) return view;
-  const { rewards, reds, points } = data;
+  const { rewards, reds, points, xp } = data;
 
   async function redeem(r) {
     if (points < r.cost) return toast('แต้มยังไม่พอ', 'err');
@@ -353,9 +359,11 @@ function Shop() {
 
   return (
     <div>
-      <div className="stat" style={{ marginBottom: 14 }}>
-        <div className="num">{points}</div><div className="lbl">แต้มที่มี</div>
+      <div className="stats">
+        <div className="stat"><div className="num">{points}</div><div className="lbl">◆ แต้มที่มี</div></div>
+        <div className="stat"><div className="num">{xp}</div><div className="lbl">★ สะสมทั้งหมด</div></div>
       </div>
+      <p className="muted" style={{ margin: '8px 0 14px' }}>แลกของแล้ว “สะสมทั้งหมด” ไม่ลดนะ — แลกได้เลย</p>
       <div className="card">
         <h2>ร้านของรางวัล</h2>
         {rewards.length === 0 ? <Empty /> : rewards.map((r) => (
