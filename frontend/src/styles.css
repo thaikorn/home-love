@@ -67,6 +67,18 @@ body {
   padding: 16px; padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 
+/* แถบ "มีเวอร์ชันใหม่" — ลอยทับไม่แทรกเป็นแถว เพราะ .app สูงเต็มจอพอดี (ดูคอมเมนต์ .app ข้างบน)
+   z-index อยู่เหนือ topbar(10)/HUD(20) แต่ต่ำกว่า modal(50) — ห้ามบังหน้าต่างที่เด็กกำลังกรอก */
+.updatebar {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  width: min(100%, 640px); z-index: 30;
+  border: 0; border-bottom: 2px solid var(--gold-dark);
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
+  color: #1a1330; font: inherit; font-weight: 800; font-size: 13px;
+  padding: calc(9px + env(safe-area-inset-top)) 12px 9px;
+  cursor: pointer; box-shadow: var(--shadow);
+}
+
 /* Top bar */
 .topbar {
   position: sticky; top: 0; z-index: 10;

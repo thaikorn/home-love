@@ -34,6 +34,40 @@ export function setCachedSession(s) {
   else localStorage.removeItem(SESSION_KEY);
 }
 
+// ---------- รู้ตัวเมื่อโค้ดหน้าเว็บเก่ากว่าที่ deploy อยู่ ----------
+/**
+ * แท็บที่เปิดค้างข้ามรอบ deploy จะรันโค้ดชุดเก่าต่อไปเรื่อยๆ — useLoad ดึงแค่ "ข้อมูล" ใหม่
+ * ไม่ได้โหลด "โค้ด" ใหม่ เด็กจึงเห็นเลขสดบนหน้าตาเก่าโดยไม่มีทางรู้ว่าต้องปิดแอปเปิดใหม่
+ *
+ * sync-frontend.mjs ปั๊ม build id เดียวกันไว้ทั้งในหน้าเว็บ (window.__BUILD_ID__)
+ * และใน backend (Version.gs → ติดมากับทุก response ผ่าน json_)
+ * สองค่าไม่ตรงกันเมื่อไหร่ แปลว่าหน้านี้เก่าแล้ว
+ *
+ * ตอน npm run dev ไม่มี __BUILD_ID__ (หน้ามาจาก vite ไม่ได้ผ่าน sync) — เงียบไว้ ห้ามรีโหลดวน
+ */
+const pageBuild = (typeof window !== 'undefined' && window.__BUILD_ID__) || '';
+let staleBuild = '';
+const staleSubs = new Set();
+
+function noteBuild_(serverBuild) {
+  if (!serverBuild || !pageBuild || staleBuild || serverBuild === pageBuild) return;
+  staleBuild = serverBuild;
+  staleSubs.forEach((cb) => { try { cb(staleBuild); } catch { /* ignore */ } });
+}
+
+// สมัครรับข่าวว่าโค้ดหน้านี้เก่าแล้ว (เรียกซ้ำได้ ถ้ารู้อยู่แล้วจะเรียก cb ทันที)
+export function onStale(cb) {
+  if (staleBuild) cb(staleBuild);
+  staleSubs.add(cb);
+  return () => staleSubs.delete(cb);
+}
+
+// เด็กที่กลับเข้าแอปอาจได้ข้อมูลหน้าแรกจาก prefetch ทั้งหมด โดยไม่ยิง post() เลยสักครั้ง
+// — BOOT_SCRIPT_ ใน Code.gs จึงเก็บ build ของ server ไว้ให้ตรงนี้
+if (typeof window !== 'undefined' && window.__BOOT__ && window.__BOOT__.then) {
+  window.__BOOT__.then(() => noteBuild_(window.__BUILD_SERVER__), () => {});
+}
+
 // กันหน้าจอหมุนค้างตลอดกาลตอนเน็ตสะดุด/Apps Script ค้าง
 const TIMEOUT_MS = 25000;
 
@@ -57,6 +91,7 @@ async function post(action, params) {
   } finally {
     clearTimeout(timer);
   }
+  noteBuild_(json.build);
   if (!json.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
   return json.data;
 }
