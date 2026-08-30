@@ -62,7 +62,8 @@ const BOOT_SCRIPT_ = '<script>(function(){try{' +
   'var req=fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},' +
   'body:JSON.stringify({action:"boot",token:t,params:{}})})' +
   '.then(function(r){return r.json();})' +
-  '.then(function(j){return j&&j.ok?j.data:null;}).catch(function(){return null;});' +
+  '.then(function(j){if(j&&j.build)window.__BUILD_SERVER__=j.build;return j&&j.ok?j.data:null;})' +
+  '.catch(function(){return null;});' +
   'var late=new Promise(function(res){setTimeout(function(){res(null);},15000);});' +
   'window.__BOOT__=Promise.race([req,late]);' +
   '}catch(e){window.__BOOT__=null;}})();</script>';
@@ -159,6 +160,18 @@ function dispatch_(action, token, params) {
 
 function json_(obj) {
   return ContentService
-    .createTextOutput(JSON.stringify(obj))
+    .createTextOutput(JSON.stringify(Object.assign({ build: currentBuild_() }, obj)))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * build id ของ Index.html ชุดที่ push ขึ้นมาด้วยกัน — sync-frontend.mjs เขียน Version.gs ให้
+ * หน้าเว็บที่เปิดค้างข้ามรอบ deploy เอาค่านี้ไปเทียบกับ window.__BUILD_ID__ ของตัวเองแล้วรีโหลด
+ *
+ * Version.gs เป็นไฟล์ generated (gitignored) — clone ใหม่แล้ว push โดยไม่ sync ก็จะไม่มีไฟล์นี้
+ * ต้องคืนค่าว่าง (= ปิดฟีเจอร์นี้เงียบๆ) ห้ามโยน ReferenceError ทำทั้ง API พัง
+ */
+function currentBuild_() {
+  return typeof BUILD_ID === 'string' ? BUILD_ID : '';
+}
+

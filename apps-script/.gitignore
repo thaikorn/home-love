@@ -3,3 +3,4 @@ node_modules
 .clasp-deployment.json
 *.log
 Index.html
+Version.gs

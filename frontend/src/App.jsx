@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { call, getToken, setToken, getCachedSession, setCachedSession } from './api.js';
+import { call, getToken, setToken, getCachedSession, setCachedSession, onStale } from './api.js';
 import Login from './screens/Login.jsx';
 import ChildApp from './screens/ChildApp.jsx';
 import ParentApp from './screens/ParentApp.jsx';
@@ -8,9 +8,44 @@ import { ToastProvider } from './components.jsx';
 export default function App() {
   return (
     <ToastProvider>
+      <UpdateBar />
       <Root />
     </ToastProvider>
   );
+}
+
+/**
+ * แถบ "มีเวอร์ชันใหม่" — หน้าที่เปิดค้างข้ามรอบ deploy จะรันโค้ดเก่าต่อไป (ดู onStale ใน api.js)
+ *
+ * ไม่รีโหลดทันทีที่รู้ — เด็กอาจกำลังแนบรูปส่งงานอยู่แล้วรูปหาย
+ * รอจังหวะที่แอปกลับมาหน้าจอครั้งถัดไปแทน (ตอนนั้นไม่มีอะไรค้างกลางคัน) หรือให้แตะแถบเอง
+ */
+function UpdateBar() {
+  const [build, setBuild] = useState('');
+  useEffect(() => onStale(setBuild), []);
+
+  useEffect(() => {
+    if (!build || reloadedFor(build)) return; // รีโหลดไปแล้วแต่ id ยังไม่ตรง — อย่าวน ปล่อยให้กดเอง
+    const onVis = () => { if (document.visibilityState === 'visible') update(build); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [build]);
+
+  if (!build) return null;
+  return (
+    <button className="updatebar" onClick={() => update(build)}>
+      ✨ มีเวอร์ชันใหม่ · แตะเพื่ออัปเดต
+    </button>
+  );
+}
+
+const RELOAD_KEY = 'homelove_reloaded_';
+function reloadedFor(build) {
+  try { return sessionStorage.getItem(RELOAD_KEY + build) === '1'; } catch { return false; }
+}
+function update(build) {
+  try { sessionStorage.setItem(RELOAD_KEY + build, '1'); } catch { /* ignore */ }
+  window.location.reload();
 }
 
 function Root() {
