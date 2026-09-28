@@ -120,5 +120,5 @@ function logout_(token) {
 // รายชื่อเด็ก (สำหรับหน้าเลือกรูปก่อนใส่ PIN) — ไม่คืน pinHash
 function publicChildren_() {
   return where_(TAB.Children, function (c) { return toBool_(c.active); })
-    .map(function (c) { return { id: c.id, name: c.name, avatar: c.avatar, color: c.color }; });
+    .map(function (c) { return { id: c.id, name: c.name, avatar: c.avatar, photo: c.photo || '', color: c.color }; });
 }

@@ -22,7 +22,7 @@ function childState_(childId) {
     .map(function (b) { return { kind: b.kind, awardedAt: toIso_(b.awardedAt) }; });
   const streak = Number(child.streakCurrent) || 0;
   return {
-    id: child.id, name: child.name, avatar: child.avatar, color: child.color,
+    id: child.id, name: child.name, avatar: child.avatar, photo: child.photo || '', color: child.color,
     points: Number(child.points) || 0,
     level: levelFromXp_(childXp_(child.id), cfg),
     streakCurrent: streak,
@@ -145,7 +145,7 @@ const CHILD_ACTIONS = {
       .map(function (c) {
         const lv = levelFromXp_(childXp_(c.id), cfg);
         return {
-          id: c.id, name: c.name, avatar: c.avatar, color: c.color,
+          id: c.id, name: c.name, avatar: c.avatar, photo: c.photo || '', color: c.color,
           weekPoints: week[c.id] || 0, points: Number(c.points) || 0, xp: lv.xp,
           streakCurrent: Number(c.streakCurrent) || 0,
           level: lv.level, title: lv.title, titleIcon: lv.titleIcon,
@@ -416,7 +416,7 @@ const PARENT_ACTIONS = {
     const cfg = getConfig_();
     return where_(TAB.Children, function (c) { return true; }).map(function (c) {
       return {
-        id: c.id, name: c.name, avatar: c.avatar, color: c.color, active: toBool_(c.active),
+        id: c.id, name: c.name, avatar: c.avatar, photo: c.photo || '', color: c.color, active: toBool_(c.active),
         points: Number(c.points) || 0, streakCurrent: Number(c.streakCurrent) || 0, streakMax: Number(c.streakMax) || 0,
         streakBonusPercent: streakBonusPct_(Number(c.streakCurrent) || 0, cfg),
         level: levelFromXp_(childXp_(c.id), cfg),

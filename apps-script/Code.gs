@@ -150,7 +150,7 @@ function dispatch_(action, token, params) {
 
   if (action.indexOf('parent.') === 0) {
     requireRole_(session, 'parent');
-    const fn = PARENT_ACTIONS[action] || CRUD_ACTIONS[action];
+    const fn = PARENT_ACTIONS[action] || CRUD_ACTIONS[action] || CLASS_ACTIONS[action];
     if (!fn) throw new Error('unknown action: ' + action);
     return fn(session, params);
   }
@@ -174,4 +174,3 @@ function json_(obj) {
 function currentBuild_() {
   return typeof BUILD_ID === 'string' ? BUILD_ID : '';
 }
-

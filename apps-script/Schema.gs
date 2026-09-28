@@ -19,14 +19,18 @@ const TAB = {
   Config: 'Config',
   Sessions: 'Sessions',
   Quests: 'Quests',
+  ClassPackages: 'ClassPackages',
+  ClassSessions: 'ClassSessions',
 };
 
 // หัวคอลัมน์ของแต่ละ tab (ลำดับสำคัญ)
 const SCHEMA = {
   // shields = โล่กันสตรีคขาด (ต่อท้ายเสมอ ห้ามแทรกกลาง)
+  // photo = รูปโปรไฟล์จริง เป็น data URL JPEG ย่อแล้ว (~10KB) เก็บในเซลล์ตรงๆ — ไม่ใช้ Drive
+  //         เพราะติดมากับข้อมูลรอบเดียว ไม่ต้องยิงไปโหลดรูปจากอีก origin; ว่าง = ใช้อีโมจิ avatar
   Children: [
     'id', 'name', 'avatar', 'color', 'pinHash',
-    'points', 'streakCurrent', 'streakMax', 'lastStreakDate', 'active', 'shields',
+    'points', 'streakCurrent', 'streakMax', 'lastStreakDate', 'active', 'shields', 'photo',
   ],
   Parents: [
     'id', 'username', 'passwordHash', 'email',
@@ -74,6 +78,14 @@ const SCHEMA = {
   Sessions: [
     'token', 'role', 'refId', 'name', 'expiresAt',
   ],
+  // แพ็กคลาสเรียนของเด็ก (เช่น กีตาร์ 1 คลาส 8 ครั้ง) — จำนวนครั้งที่ใช้ไปนับจาก ClassSessions
+  ClassPackages: [
+    'id', 'childId', 'subject', 'icon', 'totalSessions', 'dayOfWeek', 'note', 'active', 'createdAt',
+  ],
+  // ประวัติแต่ละครั้งที่เรียน/เลื่อนของแพ็กคลาสเรียน
+  ClassSessions: [
+    'id', 'packageId', 'date', 'status', 'note', 'createdAt',
+  ],
 };
 
 /**
@@ -95,6 +107,8 @@ const TEXT_COLS = {
   Config: ['value'],
   Quests: ['periodKey', 'awardedAt'],
   Sessions: ['token', 'expiresAt'],
+  ClassPackages: ['createdAt'],
+  ClassSessions: ['date', 'createdAt'],
 };
 
 // ค่า Config เริ่มต้น
@@ -125,3 +139,5 @@ const DEFAULT_CONFIG = {
 const SUB_STATUS = { PENDING: 'รอตรวจ', APPROVED: 'ผ่าน', REJECTED: 'ตีกลับ' };
 const RED_STATUS = { PENDING: 'รออนุมัติ', APPROVED: 'อนุมัติ', REJECTED: 'ปฏิเสธ' };
 const WISH_STATUS = { NEW: 'ใหม่', CONVERTED: 'แปลงเป็นรางวัลแล้ว', CLOSED: 'ปิด' };
+// เรียนเสริมวันอื่น (นอก dayOfWeek ปกติ) ก็ถือเป็น DONE ธรรมดา ไม่ต้องมีสถานะแยก
+const CLASS_SESSION_STATUS = { DONE: 'เรียนแล้ว', RESCHEDULED: 'เลื่อน' };

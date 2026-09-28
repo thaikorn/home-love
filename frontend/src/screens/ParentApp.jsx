@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
-import { useToast, Empty, Modal, Photo, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
+import { useToast, Empty, Modal, Photo, StatusChip, HudNav, AppBody, useLoad, fmtDate, Avatar, BusyDot } from '../components.jsx';
 import { confetti, play } from '../fx.js';
 import ParentSettings from './ParentSettings.jsx';
 
@@ -21,7 +21,10 @@ export default function ParentApp({ session, onLogout }) {
     <div className="app">
       <div className="topbar">
         <div><h1>ผู้ปกครอง</h1><div className="sub">{session.name}</div></div>
-        <button className="btn gray sm" onClick={onLogout}>ออก</button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <BusyDot />
+          <button className="btn gray sm" onClick={onLogout}>ออก</button>
+        </div>
       </div>
       <AppBody scrollKey={tab}>
         {tab === 'review' && <ReviewQueue />}
@@ -293,7 +296,7 @@ function PointsView() {
         return (
         <div key={c.id} className="item">
           <div className="grow">
-            <div className="title">{c.avatar} {c.name} <span className="chip ok">LV.{(c.level || {}).level ?? 1}</span> {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
+            <div className="title"><Avatar c={c} size={28} /> {c.name} <span className="chip ok">LV.{(c.level || {}).level ?? 1}</span> {!c.active && <span className="chip bad">ปิดใช้งาน</span>}</div>
             <div className="sub">🔥 ทำต่อเนื่อง {c.streakCurrent} วัน (สูงสุด {c.streakMax}){c.streakBonusPercent > 0 ? ` · โบนัส +${c.streakBonusPercent}%` : ''}</div>
             <div className="sub">{(c.level || {}).titleIcon} {(c.level || {}).title} · อีก {(c.level || {}).xpToNext ?? 0} ขึ้นเลเวล{c.shields > 0 ? ` · 🛡️ ${c.shields}` : ''}</div>
             <div className="sub muted">หามาได้ทั้งหมด {(c.level || {}).xp ?? 0} (XP) · ใช้ไปแล้ว {spent} · เหลือ {c.points}</div>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call, callBatch, fileToDataUrl } from '../api.js';
-import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate } from '../components.jsx';
+import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate, Avatar, BusyDot } from '../components.jsx';
 import { confetti, floatText, play, checkLevelUp, soundOn, toggleSound } from '../fx.js';
 
 const TABS = [
-  { key: 'home', label: 'หน้าหลัก', ic: '🏠' },
-  { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
+  { key: 'home', label: 'หน้าหลัก', ic: '🎸' },
+  { key: 'chores', label: 'ภารกิจ', ic: '🥁' },
   { key: 'status', label: 'สถานะ', ic: '📋' },
   { key: 'shop', label: 'ร้านค้า', ic: '🎁' },
   { key: 'wish', label: 'อธิษฐาน', ic: '⭐' },
@@ -21,8 +21,9 @@ export default function ChildApp({ session, onLogout }) {
   return (
     <div className="app">
       <div className="topbar">
-        <div><h1>สวัสดี {session.name} 👋</h1><div className="sub">พร้อมลุยภารกิจหรือยัง?</div></div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div><h1>สวัสดี {session.name} 🤘</h1><div className="sub">พร้อมขึ้นเวทีหรือยัง?</div></div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <BusyDot />
           <button className="btn gray sm" onClick={() => setNonce((n) => n + 1)} title="โหลดใหม่">🔄</button>
           <SoundToggle />
           <button className="btn gray sm" onClick={onLogout}>ออก</button>
@@ -60,7 +61,7 @@ function LeaderCard({ title, rows, score, note }) {
       {rows.map((c, i) => (
         <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
           <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
-          <div className="face">{c.avatar}</div>
+          <Avatar c={c} size={40} />
           <div className="who">
             <div><b style={{ color: c.color }}>{c.name}</b> <span className="chip ok">LV.{c.level}</span></div>
             <div className="sub muted">{c.titleIcon} {c.title} · 🔥 {c.streakCurrent} วัน</div>
@@ -79,7 +80,7 @@ function Home() {
     () => callBatch([['child.state'], ['child.leaderboard']]).then(([x, board]) => {
       checkLevelUp(x.id, x.level && x.level.level, x.level && x.level.title); // ขึ้นเลเวล = ฉลองเต็มจอ
       return { st: x, board: board || [] };
-    }), []));
+    }), []), 'child.home');
   if (view) return view;
   const { st, board } = data;
 
@@ -100,9 +101,9 @@ function Home() {
     <div>
       <div className="card">
         <div className="levelbar">
-          <div className="lv"><small>LV</small><b>{lv.level}</b></div>
+          <div className="me"><Avatar c={st} size={58} /><div className="lv"><small>LV</small><b>{lv.level}</b></div></div>
           <div className="grow">
-            <div className="bar-label"><span>{st.avatar} {st.name} · {lv.titleIcon} {lv.title}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
+            <div className="bar-label"><span>{st.name} · {lv.titleIcon} {lv.title}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
             <div className="bar"><i style={{ width: lvPct + '%' }} /></div>
             <div className="muted" style={{ marginTop: 4 }}>อีก {lv.xpToNext} แต้ม → เลเวล {lv.level + 1}</div>
           </div>
@@ -305,7 +306,7 @@ function SubmitModal({ chore, session, onClose, onDone }) {
           <div className="tag-days">
             {mates.map((m) => (
               <button key={m.id} className={team.includes(m.id) ? 'on' : ''} onClick={() => toggleMate(m.id)}>
-                {m.avatar} {m.name}
+                <Avatar c={m} size={22} /> {m.name}
               </button>
             ))}
           </div>
@@ -316,7 +317,7 @@ function SubmitModal({ chore, session, onClose, onDone }) {
 }
 
 function Status() {
-  const { data: subs, view } = useLoad(useCallback(() => call('child.submissions'), []));
+  const { data: subs, view } = useLoad(useCallback(() => call('child.submissions'), []), 'child.status');
   if (view) return view;
   return (
     <div className="card">
@@ -342,7 +343,7 @@ function Shop() {
   // สามชุดนี้ต้องใช้พร้อมกัน — ส่งไปรอบเดียว
   const { data, load, view } = useLoad(useCallback(
     () => callBatch([['child.rewards'], ['child.redemptions'], ['child.state']])
-      .then(([rw, rd, st]) => ({ rewards: rw, reds: rd, points: st.points, xp: (st.level && st.level.xp) || 0 })), []));
+      .then(([rw, rd, st]) => ({ rewards: rw, reds: rd, points: st.points, xp: (st.level && st.level.xp) || 0 })), []), 'child.shop');
 
   if (view) return view;
   const { rewards, reds, points, xp } = data;
