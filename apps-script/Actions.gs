@@ -94,6 +94,7 @@ function availableChores_(childId) {
     const tw = openIds[wins[0]];
     result.push({
       id: c.id, name: c.name, icon: c.icon, basePoints: Number(c.basePoints) || 0,
+      dailyGroup: String(c.dailyGroup || '').trim(),
       timeWindowId: tw.id, timeWindowName: tw.name,
       onTime: isBeforeCutoff_(tw), cutoff: toHm_(tw.cutoff), endTime: toHm_(tw.endTime),
       multiplierToday: windowMultiplierFor_(tw, ref.dow), // ×1 = วันนี้ไม่มีตัวคูณพิเศษ

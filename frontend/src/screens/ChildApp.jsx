@@ -242,6 +242,7 @@ function Chores({ session }) {
               <button key={c.id + c.timeWindowId} className="tile" onClick={() => setSel(c)}>
                 <div className="emoji">{c.icon || '🧹'}</div>
                 <div className="name">{c.name}</div>
+                {c.dailyGroup && <div className="chip warn mt-xs">วันละ 1: {c.dailyGroup}</div>}
                 <div className="meta">
                   {c.basePoints} แต้ม{c.multiplierToday > 1 && <b style={{ color: 'var(--pink-dark)' }}> ×{c.multiplierToday} วันนี้!</b>}
                   {' · '}{c.timeWindowName} (ถึง {c.endTime} น.)
