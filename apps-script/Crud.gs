@@ -115,6 +115,7 @@ const CRUD_ACTIONS = {
       return {
         id: c.id, name: c.name, icon: c.icon, basePoints: Number(c.basePoints) || 0,
         timeWindowIds: toArr_(c.timeWindowIds), active: toBool_(c.active),
+        dailyGroup: String(c.dailyGroup || '').trim(),
       };
     });
   },
@@ -123,6 +124,7 @@ const CRUD_ACTIONS = {
     const chore = {
       id: newId_('cho'), name: p.name, icon: p.icon || '🧹',
       basePoints: Number(p.basePoints) || 0, timeWindowIds: fromArr_(p.timeWindowIds || []), active: true,
+      dailyGroup: String(p.dailyGroup || '').trim(),
     };
     insert_(TAB.Chores, chore);
     return { id: chore.id };
@@ -133,6 +135,7 @@ const CRUD_ACTIONS = {
     if (p.icon !== undefined) patch.icon = p.icon;
     if (p.basePoints !== undefined) patch.basePoints = Number(p.basePoints) || 0;
     if (p.timeWindowIds !== undefined) patch.timeWindowIds = fromArr_(p.timeWindowIds);
+    if (p.dailyGroup !== undefined) patch.dailyGroup = String(p.dailyGroup).trim();
     if (p.active !== undefined) patch.active = !!p.active;
     update_(TAB.Chores, p.id, patch);
     return { ok: true };

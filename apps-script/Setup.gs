@@ -220,7 +220,7 @@ function ensureSchemaColumns_() {
 
 // ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
 // เปลี่ยนเลขเวอร์ชันเมื่อมี migration ใหม่ที่ต้องรันซ้ำ
-const REPAIR_FLAG_ = 'MIGRATION_V5';
+const REPAIR_FLAG_ = 'MIGRATION_V6';
 const REPAIR_DONE_ = {};   // เช็คแล้วในรอบนี้ — batch เรียก dispatch_ ต่อรายการ ไม่ต้องถาม properties ซ้ำ
 function ensureRepaired_() {
   if (REPAIR_DONE_.checked) return;

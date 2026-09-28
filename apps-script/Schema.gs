@@ -40,8 +40,10 @@ const SCHEMA = {
   TimeWindows: [
     'id', 'name', 'startTime', 'endTime', 'cutoff', 'days', 'bonusMultiplier', 'active', 'bonusDays',
   ],
+  // dailyGroup ต่อท้ายเสมอ — งานที่ใส่ชื่อกลุ่มเดียวกัน (เช่น "ดนตรี" = ซ้อมดนตรี/แกะเพลง)
+  // เด็กแต่ละคนส่งได้วันละ 1 งานจากกลุ่มนั้น · ว่าง = ไม่จำกัด (พฤติกรรมเดิม)
   Chores: [
-    'id', 'name', 'icon', 'basePoints', 'timeWindowIds', 'active',
+    'id', 'name', 'icon', 'basePoints', 'timeWindowIds', 'active', 'dailyGroup',
   ],
   Submissions: [
     'id', 'choreId', 'timeWindowId', 'submittedBy', 'teamMembers',

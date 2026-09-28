@@ -287,7 +287,7 @@ function ChoresCrud() {
       {list.length === 0 ? <Empty /> : list.map((c) => (
         <div key={c.id} className="item">
           <div className="grow">
-            <div className="title">{c.icon} {c.name} {!c.active && <span className="chip bad">ปิด</span>}</div>
+            <div className="title">{c.icon} {c.name} {c.dailyGroup && <span className="chip warn">วันละ 1: {c.dailyGroup}</span>} {!c.active && <span className="chip bad">ปิด</span>}</div>
             <div className="sub">
               {c.basePoints} แต้ม
               {(() => {
@@ -316,6 +316,7 @@ function ChoreForm({ data, tws, onClose, onDone }) {
   const [icon, setIcon] = useState(data?.icon || '🧹');
   const [basePoints, setBasePoints] = useState(data?.basePoints || 10);
   const [wins, setWins] = useState(data?.timeWindowIds || []);
+  const [dailyGroup, setDailyGroup] = useState(data?.dailyGroup || '');
   const [active, setActive] = useState(data ? data.active : true);
   const [busy, setBusy] = useState(false);
 
@@ -328,7 +329,7 @@ function ChoreForm({ data, tws, onClose, onDone }) {
     }
     setBusy(true);
     try {
-      const p = { name, icon, basePoints: Number(basePoints), timeWindowIds: wins };
+      const p = { name, icon, basePoints: Number(basePoints), timeWindowIds: wins, dailyGroup };
       if (isNew) await call('parent.chores.create', p);
       else await call('parent.chores.update', { id: data.id, ...p, active });
       onDone();
@@ -342,6 +343,9 @@ function ChoreForm({ data, tws, onClose, onDone }) {
       <EmojiPicker value={icon} onChange={setIcon} options={CHORE_ICONS} label="ไอคอนงาน" />
       <label>แต้มพื้นฐาน</label>
       <input type="number" value={basePoints} onChange={(e) => setBasePoints(e.target.value)} />
+      <label>กลุ่มวันละครั้ง (ไม่บังคับ)</label>
+      <input value={dailyGroup} placeholder="เช่น ดนตรี" onChange={(e) => setDailyGroup(e.target.value)} />
+      <div className="muted" style={{ marginTop: 4 }}>งานที่ใส่ชื่อกลุ่มเดียวกัน ลูกแต่ละคนส่งได้วันละ 1 อย่างจากกลุ่มนั้น (เช่น ซ้อมดนตรี กับ แกะเพลง ใส่ "ดนตรี" ทั้งคู่)</div>
       <label>ช่วงเวลาที่ทำได้ (เลือกได้หลายช่วง)</label>
       {tws.length === 0 ? (
         <div className="muted">ยังไม่มีช่วงเวลา — ไปเพิ่มที่แท็บ “ช่วงเวลา” ก่อน ไม่งั้นลูกจะไม่เห็นงานนี้</div>
