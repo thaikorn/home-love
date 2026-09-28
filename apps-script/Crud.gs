@@ -54,32 +54,43 @@ function subsetDays_(bonusDays, openDays) {
   return picked.sort(function (a, b) { return a - b; });
 }
 
+// รูปโปรไฟล์เด็ก: หน้าเว็บย่อเป็น JPEG สี่เหลี่ยมเล็กๆ มาแล้ว — กันไว้อีกชั้นไม่ให้เกินขีดของเซลล์ชีต (50,000 ตัวอักษร)
+function checkPhoto_(photo) {
+  const s = String(photo || '');
+  if (!s) return '';
+  if (s.indexOf('data:image/') !== 0) throw new Error('รูปไม่ถูกต้อง');
+  if (s.length > 45000) throw new Error('รูปใหญ่เกินไป');
+  return s;
+}
+
 const CRUD_ACTIONS = {
   // ---------- เด็ก ----------
   'parent.children.list': function () {
     return where_(TAB.Children, function () { return true; }).map(function (c) {
       return {
-        id: c.id, name: c.name, avatar: c.avatar, color: c.color,
+        id: c.id, name: c.name, avatar: c.avatar, photo: c.photo || '', color: c.color,
         points: Number(c.points) || 0, streakCurrent: Number(c.streakCurrent) || 0,
         streakMax: Number(c.streakMax) || 0, active: toBool_(c.active),
       };
     });
   },
-  // {name, avatar, color, pin}
+  // {name, avatar, color, pin, photo?}
   'parent.children.create': function (s, p) {
     if (!p.name) throw new Error('ต้องมีชื่อ');
     if (!/^\d{4}$/.test(String(p.pin || ''))) throw new Error('PIN ต้องเป็นตัวเลข 4 หลัก');
     const child = {
       id: newId_('chd'), name: p.name, avatar: p.avatar || '🙂', color: p.color || '#8ecae6',
       pinHash: hashSecret_(p.pin), points: 0, streakCurrent: 0, streakMax: 0, lastStreakDate: '', active: true,
+      photo: checkPhoto_(p.photo),
     };
     insert_(TAB.Children, child);
     return { id: child.id };
   },
-  // {id, name?, avatar?, color?, pin?, active?}
+  // {id, name?, avatar?, color?, pin?, active?, photo?} — photo '' = ลบรูป กลับไปใช้อีโมจิ
   'parent.children.update': function (s, p) {
     const patch = {};
     ['name', 'avatar', 'color'].forEach(function (k) { if (p[k] !== undefined) patch[k] = p[k]; });
+    if (p.photo !== undefined) patch.photo = checkPhoto_(p.photo);
     if (p.active !== undefined) patch.active = !!p.active;
     if (p.pin) {
       if (!/^\d{4}$/.test(String(p.pin))) throw new Error('PIN ต้องเป็นตัวเลข 4 หลัก');

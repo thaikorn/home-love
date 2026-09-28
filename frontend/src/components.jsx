@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
+import { readSnap, writeSnap, onBusy } from './api.js';
 
 // ---------- Toast ----------
 const ToastCtx = createContext(() => {});
@@ -129,15 +130,17 @@ export function ErrorRetry({ message, onRetry }) {
  * (เดิมถ้าโหลดพลาดจะขึ้น toast แล้วปล่อยให้สปินเนอร์หมุนค้างตลอดกาล)
  * loader ต้องห่อด้วย useCallback · คืน view = <Loading/>/<ErrorRetry/> ถ้ายังไม่มีข้อมูลให้แสดง
  */
-export function useLoad(loader) {
-  const [data, setData] = useState(null);
+// snapKey (ไม่บังคับ) = ชื่อหน้าจอ — ใส่แล้วเปิดหน้ามาจะเห็นข้อมูลรอบก่อนทันที ไม่ต้องรอ server
+// (ดู readSnap ใน api.js) ใส่เฉพาะหน้าที่ loader ไม่มี params ที่เปลี่ยนไปมา
+export function useLoad(loader, snapKey) {
+  const [data, setData] = useState(() => readSnap(snapKey));
   const [error, setError] = useState('');
   const load = useCallback(() => {
     setError('');
     return Promise.resolve().then(loader)
-      .then((d) => setData(d === undefined ? null : d))
+      .then((d) => { setData(d === undefined ? null : d); writeSnap(snapKey, d); })
       .catch((e) => setError(e.message || 'โหลดข้อมูลไม่สำเร็จ'));
-  }, [loader]);
+  }, [loader, snapKey]);
   useEffect(() => { load(); }, [load]);
 
   // กลับมาดูหน้าจอเมื่อไหร่ก็ดึงข้อมูลใหม่ — ไม่งั้นแอปที่เปิดค้างไว้จะโชว์ตัวเลขเก่า
@@ -153,10 +156,26 @@ export function useLoad(loader) {
       window.removeEventListener('pageshow', onShow);
     };
   }, [load]);
-  const view = error
+  // มีภาพจำโชว์อยู่แล้วแต่รอบสดล้ม ก็ยังโชว์ของเดิมไว้ ดีกว่าเด้งเป็นหน้า error
+  const view = error && (data === null || !snapKey)
     ? <ErrorRetry message={error} onRetry={load} />
     : (data === null ? <Loading /> : null);
   return { data, error, load, view };
+}
+
+// ---------- รูปประจำตัวเด็ก ----------
+// c = {photo, avatar} — มีรูปจริงใช้รูป ไม่มีก็ถอยไปใช้อีโมจิ
+export function Avatar({ c, size = 36 }) {
+  const style = { width: size, height: size };
+  if (c && c.photo) return <img className="av" src={c.photo} alt="" style={style} />;
+  return <span className="av emoji" style={{ ...style, fontSize: Math.round(size * 0.78) }}>{(c && c.avatar) || '🙂'}</span>;
+}
+
+// ---------- ตัวบอกว่ามีคำขอค้างอยู่ (server ตอบช้าจะได้รู้ว่าแอปไม่ได้ค้าง) ----------
+export function BusyDot() {
+  const [busy, setBusy] = useState(false);
+  useEffect(() => onBusy(setBusy), []);
+  return <span className={'busydot' + (busy ? ' on' : '')} title="กำลังอัปเดต">🎵</span>;
 }
 
 // ---------- status chip ----------

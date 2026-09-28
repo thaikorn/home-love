@@ -1,23 +1,24 @@
-/* Home Love — ธีมอาร์เคด/RPG โทนเข้ม
-   คงชื่อคลาสเดิมทั้งหมด เปลี่ยนเฉพาะหน้าตา */
+/* Home Love — ธีมวงดนตรี/เวทีคอนเสิร์ต (ลูกสามคนเรียนกีตาร์ กลอง ร้องเพลง)
+   โทนเวทีมืด ไฟสปอตไลต์สีอำพัน แดงแอมป์ + ฟ้านีออน
+   คงชื่อคลาสเดิมทั้งหมด (--pink/--purple ฯลฯ ที่ JSX อ้างอยู่) เปลี่ยนเฉพาะหน้าตา */
 :root {
-  --bg: #0e1024;
-  --bg-2: #16183a;
-  --card: #1b1e42;
-  --card-2: #232759;
-  --ink: #eaeeff;
-  --muted: #98a0d8;
-  --line: #2e3370;
+  --bg: #0f0a10;
+  --bg-2: #1a1118;
+  --card: #1d1419;
+  --card-2: #2a1c24;
+  --ink: #fff1e6;
+  --muted: #c7a7ad;
+  --line: #4a2e38;
 
   --gold: #ffc93c;
   --gold-dark: #e2a316;
-  --neon: #38e8ff;
-  --purple: #a06bff;
+  --neon: #45d6ff;
+  --purple: #ff3d6e;   /* แดงแอมป์ — สีหลักของปุ่ม/การ์ดงาน */
 
   /* ชื่อเดิมที่ JSX อ้างอยู่ — remap เป็นโทนใหม่ */
-  --pink: #a06bff;
+  --pink: #ff3d6e;
   --pink-dark: #ffc93c;
-  --blue: #38e8ff;
+  --blue: #45d6ff;
 
   --ok: #35d38a;
   --warn: #ffb020;
@@ -25,7 +26,7 @@
 
   --radius: 16px;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-  --glow: 0 0 0 1px rgba(160, 107, 255, 0.35), 0 0 18px rgba(160, 107, 255, 0.18);
+  --glow: 0 0 0 1px rgba(255, 61, 110, 0.35), 0 0 18px rgba(255, 61, 110, 0.18);
 }
 
 * { box-sizing: border-box; }
@@ -37,9 +38,11 @@ body {
   font-family: 'Sarabun', 'Prompt', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
+  /* ไฟสปอตไลต์สองดวงส่องลงเวที + แสงแดงจากพื้นเวที */
   background:
-    radial-gradient(1200px 500px at 50% -10%, #2a2f6e 0%, transparent 60%),
-    radial-gradient(800px 400px at 100% 100%, #3a1f5e 0%, transparent 55%),
+    radial-gradient(420px 720px at 18% -12%, rgba(255, 190, 90, 0.22) 0%, transparent 62%),
+    radial-gradient(420px 720px at 82% -12%, rgba(69, 214, 255, 0.16) 0%, transparent 62%),
+    radial-gradient(900px 380px at 50% 112%, rgba(255, 61, 110, 0.28) 0%, transparent 60%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -74,7 +77,7 @@ body {
   width: min(100%, 640px); z-index: 30;
   border: 0; border-bottom: 2px solid var(--gold-dark);
   background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
-  color: #1a1330; font: inherit; font-weight: 800; font-size: 13px;
+  color: #2a1a06; font: inherit; font-weight: 800; font-size: 13px;
   padding: calc(9px + env(safe-area-inset-top)) 12px 9px;
   cursor: pointer; box-shadow: var(--shadow);
 }
@@ -84,8 +87,11 @@ body {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; color: #fff;
-  background: linear-gradient(135deg, #241a5c 0%, #3a2b8f 60%, #1d2a6b 100%);
-  border-bottom: 2px solid var(--line);
+  /* หน้าตาเหมือนหัวแอมป์กีตาร์: ผ้าตะแกรงลำโพงลายถี่ + ขอบทองด้านล่าง */
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #2a1a20 0%, #170d12 100%);
+  border-bottom: 3px solid var(--gold-dark);
   box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5);
 }
 .topbar h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: 0.3px; }
@@ -126,11 +132,11 @@ body {
 .levelbar .lv b { font-size: 22px; }
 .levelbar .grow { flex: 1; min-width: 0; }
 
-.bar { height: 14px; border-radius: 999px; background: #10123a; border: 1px solid var(--line); overflow: hidden; }
+.bar { height: 14px; border-radius: 999px; background: #150d12; border: 1px solid var(--line); overflow: hidden; }
 .bar > i {
   display: block; height: 100%; border-radius: 999px;
   background: linear-gradient(90deg, var(--neon), var(--purple));
-  box-shadow: 0 0 14px rgba(56, 232, 255, 0.5);
+  box-shadow: 0 0 14px rgba(69, 214, 255, 0.5);
   transition: width 0.5s ease;
 }
 .bar.gold > i { background: linear-gradient(90deg, var(--gold), #ff7a45); box-shadow: 0 0 14px rgba(255, 201, 60, 0.5); }
@@ -139,27 +145,28 @@ body {
 /* Buttons — ปุ่มหนามีเงา 3 มิติ กดแล้วยุบ */
 .btn {
   width: 100%; padding: 13px 16px; border: none; border-radius: 14px;
-  font-size: 15px; font-weight: 800; font-family: inherit; color: #1a1030;
-  background: linear-gradient(180deg, #b98bff 0%, var(--purple) 100%);
-  box-shadow: 0 4px 0 #6a3fc0, 0 8px 18px rgba(0, 0, 0, 0.45);
+  font-size: 15px; font-weight: 800; font-family: inherit; color: #2a0612;
+  background: linear-gradient(180deg, #ff7a98 0%, var(--purple) 100%);
+  box-shadow: 0 4px 0 #a01e44, 0 8px 18px rgba(0, 0, 0, 0.45);
   cursor: pointer; transition: transform 0.06s ease, box-shadow 0.06s ease;
 }
-.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #6a3fc0, 0 4px 10px rgba(0, 0, 0, 0.4); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a01e44, 0 4px 10px rgba(0, 0, 0, 0.4); }
 .btn:disabled { opacity: 0.45; box-shadow: none; cursor: not-allowed; }
 .btn.ghost {
   background: transparent; color: var(--neon);
-  border: 2px solid var(--neon); box-shadow: 0 0 14px rgba(56, 232, 255, 0.18);
+  border: 2px solid var(--neon); box-shadow: 0 0 14px rgba(69, 214, 255, 0.18);
 }
 .btn.ok { background: linear-gradient(180deg, #5ff0ac 0%, var(--ok) 100%); box-shadow: 0 4px 0 #1e8a5a, 0 8px 18px rgba(0,0,0,0.45); }
-.btn.bad { background: linear-gradient(180deg, #ff8f9a 0%, var(--bad) 100%); box-shadow: 0 4px 0 #b3323f, 0 8px 18px rgba(0,0,0,0.45); }
-.btn.gray { background: linear-gradient(180deg, #40477f 0%, #2d3268 100%); color: var(--ink); box-shadow: 0 4px 0 #1c2050, 0 8px 18px rgba(0,0,0,0.45); }
+/* ปุ่มหลักเป็นแดงแอมป์แล้ว ปุ่มอันตราย (ลบ/ปฏิเสธ) จึงเป็นแบบเส้นขอบ ไม่ให้หน้าตาเหมือนกัน */
+.btn.bad { background: rgba(255, 93, 108, 0.1); color: var(--bad); border: 2px solid var(--bad); box-shadow: 0 4px 0 #5a1a22, 0 8px 18px rgba(0,0,0,0.45); }
+.btn.gray { background: linear-gradient(180deg, #5a3a46 0%, #3d2630 100%); color: var(--ink); box-shadow: 0 4px 0 #1f1117, 0 8px 18px rgba(0,0,0,0.45); }
 .btn.sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: 11px; }
 
 /* การ์ดงาน — เหมือนการ์ดเกม */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .tile {
   position: relative; overflow: hidden;
-  background: linear-gradient(180deg, #2a2f6b 0%, var(--card) 100%);
+  background: linear-gradient(180deg, #3a2530 0%, var(--card) 100%);
   border: 2px solid var(--purple); border-radius: var(--radius);
   padding: 16px 12px; text-align: center; color: var(--ink);
   box-shadow: var(--glow), var(--shadow);
@@ -177,7 +184,7 @@ body {
 /* เลือกตัวละคร (หน้าล็อกอินเด็ก) */
 .avatars { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 14px; }
 .avatar-btn {
-  background: linear-gradient(180deg, #2a2f6b 0%, var(--card) 100%);
+  background: linear-gradient(180deg, #3a2530 0%, var(--card) 100%);
   border: 3px solid var(--line); border-radius: var(--radius);
   padding: 16px 10px; text-align: center; color: var(--ink);
   box-shadow: var(--shadow); cursor: pointer;
@@ -191,10 +198,10 @@ body {
 label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
 input, select, textarea {
   width: 100%; padding: 12px; border: 2px solid var(--line); border-radius: 12px;
-  font-size: 15px; font-family: inherit; background: #10123a; color: var(--ink);
+  font-size: 15px; font-family: inherit; background: #150d12; color: var(--ink);
 }
-input::placeholder, textarea::placeholder { color: #6a72ad; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 3px rgba(56,232,255,0.15); }
+input::placeholder, textarea::placeholder { color: #8a6a70; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 3px rgba(69,214,255,0.15); }
 input[type="color"] { padding: 4px; height: 46px; }
 textarea { min-height: 80px; resize: vertical; }
 .row { display: flex; gap: 10px; }
@@ -209,9 +216,9 @@ textarea { min-height: 80px; resize: vertical; }
 .zodiac-grid button {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 10px 4px; border: 2px solid var(--line); border-radius: 14px;
-  background: #151845; color: var(--ink); cursor: pointer;
+  background: #1f141a; color: var(--ink); cursor: pointer;
 }
-.zodiac-grid button.on { border-color: var(--gold); background: #2b2547; box-shadow: 0 0 16px rgba(255,201,60,0.3); }
+.zodiac-grid button.on { border-color: var(--gold); background: #3a2a1f; box-shadow: 0 0 16px rgba(255,201,60,0.3); }
 .zodiac-grid .face { font-size: 30px; line-height: 1; }
 .zodiac-grid .nm { font-weight: 800; font-size: 13px; }
 .zodiac-grid .sub { font-size: 11px; color: var(--muted); }
@@ -220,13 +227,13 @@ textarea { min-height: 80px; resize: vertical; }
 .emoji-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px;
   max-height: 190px; overflow-y: auto; padding: 8px;
-  border: 2px solid var(--line); border-radius: 12px; background: #10123a;
+  border: 2px solid var(--line); border-radius: 12px; background: #150d12;
 }
 .emoji-grid button {
   font-size: 24px; line-height: 1; padding: 8px 0; border-radius: 10px;
-  border: 2px solid transparent; background: #191c4b; color: var(--ink); cursor: pointer;
+  border: 2px solid transparent; background: #24161d; color: var(--ink); cursor: pointer;
 }
-.emoji-grid button.on { border-color: var(--gold); background: #2b2547; }
+.emoji-grid button.on { border-color: var(--gold); background: #3a2a1f; }
 .emoji-current { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .emoji-current .preview { font-size: 30px; line-height: 1; }
 .emoji-current input { width: 120px; text-align: center; font-size: 20px; }
@@ -235,12 +242,12 @@ textarea { min-height: 80px; resize: vertical; }
 .pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 300px; margin: 0 auto; }
 .pinpad button {
   font-size: 24px; font-weight: 900; padding: 18px; border-radius: 16px;
-  border: 2px solid var(--line); background: linear-gradient(180deg, #2a2f6b 0%, var(--card) 100%);
-  color: var(--ink); box-shadow: 0 4px 0 #14173c; cursor: pointer;
+  border: 2px solid var(--line); background: linear-gradient(180deg, #3a2530 0%, var(--card) 100%);
+  color: var(--ink); box-shadow: 0 4px 0 #120a0f; cursor: pointer;
 }
-.pinpad button:active { transform: translateY(3px); box-shadow: 0 1px 0 #14173c; }
+.pinpad button:active { transform: translateY(3px); box-shadow: 0 1px 0 #120a0f; }
 .pin-dots { display: flex; gap: 14px; justify-content: center; margin: 18px 0; }
-.pin-dots .dot { width: 16px; height: 16px; border-radius: 50%; background: #2a2f6b; border: 2px solid var(--line); }
+.pin-dots .dot { width: 16px; height: 16px; border-radius: 50%; background: #3a2530; border: 2px solid var(--line); }
 .pin-dots .dot.on { background: var(--neon); box-shadow: 0 0 12px var(--neon); border-color: var(--neon); }
 
 /* Badges / chips */
@@ -258,8 +265,8 @@ textarea { min-height: 80px; resize: vertical; }
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 14%),
-    linear-gradient(180deg, #262c66 0%, #11142f 100%);
-  border-top: 2px solid #3b4293;
+    linear-gradient(180deg, #2e1d25 0%, #120b10 100%);
+  border-top: 2px solid #5a3642;
   box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   padding: 10px 6px calc(8px + env(safe-area-inset-bottom));
 }
@@ -273,15 +280,15 @@ textarea { min-height: 80px; resize: vertical; }
   position: relative;
   width: 46px; height: 46px; border-radius: 14px;
   display: grid; place-items: center;
-  background: linear-gradient(180deg, #2c3273 0%, #191d4a 100%);
-  border: 2px solid #3b4293;
-  box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.07), 0 3px 0 #0d1030;
+  background: linear-gradient(180deg, #3a2530 0%, #24161d 100%);
+  border: 2px solid #5a3642;
+  box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.07), 0 3px 0 #0a0609;
   transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.25s ease;
 }
 .bottomnav .ic { font-size: 22px; line-height: 1; filter: grayscale(0.45) opacity(0.85); }
 .bottomnav .lb { letter-spacing: 0.2px; }
 
-.bottomnav button:active .slot { transform: translateY(3px); box-shadow: inset 0 2px 5px rgba(0,0,0,0.3), 0 0 0 #0d1030; }
+.bottomnav button:active .slot { transform: translateY(3px); box-shadow: inset 0 2px 5px rgba(0,0,0,0.3), 0 0 0 #0a0609; }
 
 /* ช่องที่เลือกอยู่ — ยกขึ้น เรืองแสงทอง */
 .bottomnav button.active { color: var(--gold); font-weight: 900; }
@@ -309,14 +316,14 @@ textarea { min-height: 80px; resize: vertical; }
   min-width: 21px; height: 21px; padding: 0 5px; border-radius: 999px;
   background: linear-gradient(180deg, #ff97a2 0%, var(--bad) 100%); color: #fff;
   font-size: 11px; font-weight: 900; display: grid; place-items: center;
-  border: 2px solid #11142f; box-shadow: 0 0 12px rgba(255, 93, 108, 0.7);
+  border: 2px solid #120b10; box-shadow: 0 0 12px rgba(255, 93, 108, 0.7);
 }
 
 /* เมนูย่อยหน้าตั้งค่า — แบบแท็บแผงเกม */
 .subtabs {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px;
   padding: 6px; border-radius: 16px;
-  background: linear-gradient(180deg, #191d4a 0%, #12153a 100%);
+  background: linear-gradient(180deg, #24161d 0%, #150d12 100%);
   border: 2px solid var(--line); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 .subtabs button {
@@ -327,16 +334,16 @@ textarea { min-height: 80px; resize: vertical; }
 }
 .subtabs button .ic { font-size: 18px; filter: grayscale(0.5) opacity(0.85); }
 .subtabs button.on {
-  background: linear-gradient(180deg, #b98bff 0%, var(--purple) 100%);
-  border-color: #d3b6ff; color: #1a1030;
-  box-shadow: 0 0 16px rgba(160, 107, 255, 0.45), inset 0 2px 5px rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, #ff7a98 0%, var(--purple) 100%);
+  border-color: #ffb3c4; color: #2a0612;
+  box-shadow: 0 0 16px rgba(255, 61, 110, 0.45), inset 0 2px 5px rgba(255, 255, 255, 0.4);
 }
 .subtabs button.on .ic { filter: none; }
 
 /* Lists */
 .item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .item:last-child { border-bottom: none; }
-.item .thumb { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: #10123a; border: 2px solid var(--line); flex: none; }
+.item .thumb { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: #150d12; border: 2px solid var(--line); flex: none; }
 .item .grow { flex: 1; min-width: 0; }
 .item .title { font-weight: 800; }
 .item .sub { font-size: 12px; color: var(--muted); }
@@ -349,7 +356,7 @@ textarea { min-height: 80px; resize: vertical; }
   text-shadow: 0 0 18px rgba(255, 201, 60, 0.8), 0 3px 0 #7a4a00;
   animation: floatup 1.5s ease-out forwards;
 }
-.fx-float.cool { color: var(--neon); text-shadow: 0 0 18px rgba(56,232,255,0.8), 0 3px 0 #08506a; }
+.fx-float.cool { color: var(--neon); text-shadow: 0 0 18px rgba(69,214,255,0.8), 0 3px 0 #08506a; }
 @keyframes floatup {
   0% { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.7); }
   20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.15); }
@@ -359,12 +366,12 @@ textarea { min-height: 80px; resize: vertical; }
 /* เอฟเฟกต์: LEVEL UP เต็มจอ */
 .fx-levelup {
   position: fixed; inset: 0; z-index: 95; display: grid; place-items: center;
-  background: rgba(6, 8, 26, 0.72); backdrop-filter: blur(3px);
+  background: rgba(10, 5, 8, 0.75); backdrop-filter: blur(3px);
   animation: fadein 0.2s ease;
 }
 .fx-levelup .box {
   text-align: center; padding: 28px 46px; border-radius: 22px;
-  background: linear-gradient(180deg, #2f2160 0%, #191c48 100%);
+  background: linear-gradient(180deg, #3a1424 0%, #1d1419 100%);
   border: 3px solid var(--gold);
   box-shadow: 0 0 50px rgba(255, 201, 60, 0.55);
   animation: zoomin 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
@@ -395,7 +402,7 @@ textarea { min-height: 80px; resize: vertical; }
 /* แถวตั้งค่าบอสแต่ละตัวในหน้ากติกา */
 .boss-row {
   border: 2px solid var(--line); border-radius: 12px;
-  padding: 10px 12px; margin-bottom: 10px; background: #10123a;
+  padding: 10px 12px; margin-bottom: 10px; background: #150d12;
 }
 .boss-row label { margin-top: 8px; }
 
@@ -408,11 +415,11 @@ textarea { min-height: 80px; resize: vertical; }
 .boss-queue .pip .ic {
   font-size: 24px; line-height: 1; width: 42px; height: 42px; border-radius: 12px;
   display: grid; place-items: center;
-  border: 2px solid var(--line); background: #191c4b; filter: grayscale(0.7) opacity(0.6);
+  border: 2px solid var(--line); background: #24161d; filter: grayscale(0.7) opacity(0.6);
 }
 .boss-queue .pip.done .ic { filter: none; border-color: var(--ok); background: rgba(53,211,138,0.12); }
 .boss-queue .pip.now .ic {
-  filter: none; border-color: var(--gold); background: #2b2547;
+  filter: none; border-color: var(--gold); background: #3a2a1f;
   box-shadow: 0 0 16px rgba(255,201,60,0.45);
 }
 .boss-queue .pip.now { color: var(--gold); font-weight: 800; }
@@ -430,8 +437,8 @@ textarea { min-height: 80px; resize: vertical; }
 /* Toast */
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 110px; z-index: 60;
-  background: linear-gradient(180deg, #2a2f6b, #1b1e42); color: var(--ink);
-  border: 2px solid var(--neon); box-shadow: 0 0 24px rgba(56,232,255,0.35);
+  background: linear-gradient(180deg, #3a2530, #1d1419); color: var(--ink);
+  border: 2px solid var(--neon); box-shadow: 0 0 24px rgba(69,214,255,0.35);
   padding: 12px 18px; border-radius: 14px; font-weight: 700; max-width: 92vw; text-align: center;
   animation: pop 0.25s ease;
 }
@@ -445,7 +452,7 @@ textarea { min-height: 80px; resize: vertical; }
       แบบ sticky ถ้าพลาดขึ้นมาปุ่มก็ยังอยู่ท้ายเนื้อหา เลื่อนลงไปกดได้เสมอ
    ความสูงคิดเป็น % ของ .modal-bg ไม่ใช้ dvh/vh — อิงกรอบที่เบราว์เซอร์ถือว่าเป็นจอจริงๆ
    (dvh บน Safari เก่ากว่า 15.4 ใช้ไม่ได้ ทั้งบรรทัดจะถูกทิ้ง แล้วกล่องจะสูงเลยจอไป) */
-.modal-bg { position: fixed; inset: 0; background: rgba(5, 6, 20, 0.72); backdrop-filter: blur(3px); display: grid; place-items: end center; z-index: 50; }
+.modal-bg { position: fixed; inset: 0; background: rgba(10, 5, 8, 0.72); backdrop-filter: blur(3px); display: grid; place-items: end center; z-index: 50; }
 .modal {
   background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
   border: 2px solid var(--line); border-bottom: none;
@@ -470,13 +477,13 @@ textarea { min-height: 80px; resize: vertical; }
 /* รูปในกล่อง — จำกัดความสูงไว้ ไม่งั้นรูปจากกล้องมือถือกินพื้นที่จนดันของอื่นตกจอ */
 .photo {
   display: block; width: 100%; max-height: 260px; object-fit: contain;
-  border-radius: 12px; background: #10123a; border: 2px solid var(--line);
+  border-radius: 12px; background: #150d12; border: 2px solid var(--line);
 }
 
 /* ที่มาของแต้มในหน้าตรวจงาน */
 .calc {
   border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px;
-  background: #10123a; font-size: 13px; color: var(--muted); line-height: 1.7;
+  background: #150d12; font-size: 13px; color: var(--muted); line-height: 1.7;
 }
 .calc .total {
   margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line);
@@ -489,8 +496,30 @@ textarea { min-height: 80px; resize: vertical; }
 .mt { margin-top: 12px; }
 .tag-days { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag-days button {
-  border: 2px solid var(--line); background: #151845; color: var(--ink);
+  border: 2px solid var(--line); background: #1f141a; color: var(--ink);
   border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700;
   font-family: inherit; cursor: pointer;
 }
-.tag-days button.on { background: linear-gradient(180deg, #b98bff, var(--purple)); border-color: var(--purple); color: #1a1030; }
+.tag-days button.on { background: linear-gradient(180deg, #ff7a98, var(--purple)); border-color: var(--purple); color: #2a0612; }
+
+/* ---------- รูปประจำตัวเด็ก (รูปจริงหรืออีโมจิ) ---------- */
+.av {
+  display: inline-grid; place-items: center; flex: none; vertical-align: middle;
+  border-radius: 50%; object-fit: cover; line-height: 1;
+  border: 2px solid var(--gold-dark); background: var(--bg-2);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 14px rgba(255, 201, 60, 0.25);
+}
+.av.emoji { border-color: transparent; box-shadow: none; background: transparent; }
+.avatar-btn .av { margin: 0 auto; }
+.levelbar .me { position: relative; flex: none; }
+.levelbar .me .lv {
+  position: absolute; right: -8px; bottom: -6px;
+  width: 30px; height: 30px; border-radius: 9px;
+}
+.levelbar .me .lv small { font-size: 7px; letter-spacing: 0.5px; }
+.levelbar .me .lv b { font-size: 13px; }
+
+/* ตัวบอกว่ากำลังคุยกับ server — โน้ตดนตรีเด้งตามจังหวะ */
+.busydot { font-size: 18px; opacity: 0; transition: opacity 0.25s ease; }
+.busydot.on { opacity: 1; animation: beat 0.6s ease-in-out infinite; }
+@keyframes beat { 50% { transform: translateY(-4px) scale(1.15); } }

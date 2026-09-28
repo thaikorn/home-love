@@ -220,7 +220,7 @@ function ensureSchemaColumns_() {
 
 // ทำ migration ครั้งเดียวอัตโนมัติตอน request แรกหลัง deploy (ไม่ต้องเข้า editor ไปกด Run)
 // เปลี่ยนเลขเวอร์ชันเมื่อมี migration ใหม่ที่ต้องรันซ้ำ
-const REPAIR_FLAG_ = 'MIGRATION_V3';
+const REPAIR_FLAG_ = 'MIGRATION_V5';
 const REPAIR_DONE_ = {};   // เช็คแล้วในรอบนี้ — batch เรียก dispatch_ ต่อรายการ ไม่ต้องถาม properties ซ้ำ
 function ensureRepaired_() {
   if (REPAIR_DONE_.checked) return;
@@ -295,4 +295,13 @@ function seedDemo() {
   insert_(TAB.Rewards, { id: newId_('rew'), name: 'เวลาเล่นเกม 30 นาที', cost: 50, limitDay: 1, limitWeek: '', limitMonth: '', active: true });
   insert_(TAB.Children, { id: newId_('chd'), name: 'น้องเอ', avatar: '🐱', color: '#ff8fab', pinHash: hashSecret_('1234'), points: 0, streakCurrent: 0, streakMax: 0, lastStreakDate: '', active: true });
   Logger.log('seedDemo() เสร็จ — เพิ่มช่วงเวลา/งาน/รางวัล/เด็กตัวอย่างแล้ว (PIN เด็ก = 1234)');
+}
+
+/**
+ * keepWarm() — ปลุก Apps Script กับ Sheet ไว้ไม่ให้เย็น (request แรกหลังว่างนานๆ ช้าได้ถึง 15–35 วินาที)
+ * ไม่มีโค้ดสร้าง trigger ให้เอง เพราะจะต้องขอสิทธิ์ใหม่ (script.scriptapp) แล้วแอปจะใช้ไม่ได้จนกว่าจะอนุญาต
+ * ตั้งเองครั้งเดียวใน editor: Triggers (รูปนาฬิกา) → Add trigger → keepWarm → Time-driven → ทุก 5 นาที
+ */
+function keepWarm() {
+  publicChildren_();
 }

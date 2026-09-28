@@ -1,12 +1,19 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { call, callBatch } from '../api.js';
-import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS } from '../components.jsx';
+import { call, callBatch, fileToAvatarDataUrl } from '../api.js';
+import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS, Avatar } from '../components.jsx';
+
+// 'YYYY-MM-DD' -> 'DD/MM/YYYY' — จัดรูปแบบตรงจากสตริง ไม่ผ่าน Date object กันเขตเวลาเลื่อนวัน
+function dmy_(dateStr) {
+  const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (dateStr || '');
+}
 
 const SUBTABS = [
   { key: 'children', label: 'ตัวละคร', ic: '🧒' },
   { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
   { key: 'rewards', label: 'ของรางวัล', ic: '🎁' },
   { key: 'timewindows', label: 'ช่วงเวลา', ic: '⏰' },
+  { key: 'classes', label: 'คลาสเรียน', ic: '🎵' },
   { key: 'game', label: 'กติกา', ic: '⚙️' },
 ];
 const DAYS = [['1', 'จ'], ['2', 'อ'], ['3', 'พ'], ['4', 'พฤ'], ['5', 'ศ'], ['6', 'ส'], ['7', 'อา']];
@@ -27,6 +34,7 @@ export default function ParentSettings() {
       {sub === 'chores' && <ChoresCrud />}
       {sub === 'rewards' && <RewardsCrud />}
       {sub === 'timewindows' && <TimeWindowsCrud />}
+      {sub === 'classes' && <ClassesCrud />}
       {sub === 'game' && <GameConfig />}
     </div>
   );
@@ -185,7 +193,7 @@ function ChildrenCrud() {
       {list.length === 0 ? <Empty /> : list.map((c) => (
         <div key={c.id} className="item">
           <div className="grow">
-            <div className="title" style={{ color: c.color }}>{c.avatar} {c.name} {!c.active && <span className="chip bad">ปิด</span>}</div>
+            <div className="title" style={{ color: c.color }}><Avatar c={c} size={28} /> {c.name} {!c.active && <span className="chip bad">ปิด</span>}</div>
             <div className="sub">{c.points} แต้ม · สตรีค {c.streakCurrent}</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -204,19 +212,28 @@ function ChildForm({ data, onClose, onDone }) {
   const isNew = !data;
   const [name, setName] = useState(data?.name || '');
   const [avatar, setAvatar] = useState(data?.avatar || '🐀');
+  const [photo, setPhoto] = useState(data?.photo || '');
   const [color, setColor] = useState(data?.color || '#ff8fab');
   const [pin, setPin] = useState('');
   const [active, setActive] = useState(data ? data.active : true);
   const [busy, setBusy] = useState(false);
+
+  async function pickPhoto(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try { setPhoto(await fileToAvatarDataUrl(f)); }
+    catch { toast('อ่านรูปไม่ได้ ลองรูปอื่น', 'err'); }
+  }
 
   async function save() {
     setBusy(true);
     try {
       if (isNew) {
         if (!/^\d{4}$/.test(pin)) { setBusy(false); return toast('PIN ต้อง 4 หลัก', 'err'); }
-        await call('parent.children.create', { name, avatar, color, pin });
+        await call('parent.children.create', { name, avatar, color, pin, photo });
       } else {
         const p = { id: data.id, name, avatar, color, active };
+        if (photo !== (data.photo || '')) p.photo = photo; // ส่งเฉพาะตอนเปลี่ยน — รูปเป็นก้อนใหญ่สุดของคำขอ
         if (pin) p.pin = pin;
         await call('parent.children.update', p);
       }
@@ -228,6 +245,12 @@ function ChildForm({ data, onClose, onDone }) {
     <Modal title={isNew ? 'เพิ่มเด็ก' : 'แก้ไขเด็ก'} onClose={onClose}>
       <label>ชื่อ</label>
       <input value={name} onChange={(e) => setName(e.target.value)} />
+      <label>รูปจริง (ไม่ใส่ = ใช้รูปนักษัตรด้านล่าง)</label>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <Avatar c={{ photo, avatar }} size={72} />
+        <input type="file" accept="image/*" onChange={pickPhoto} style={{ flex: 1 }} />
+        {photo && <button className="btn gray sm" onClick={() => setPhoto('')}>ลบรูป</button>}
+      </div>
       <ZodiacPicker value={avatar} onChange={setAvatar} />
       <label>สีประจำตัว</label>
       <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
@@ -522,6 +545,186 @@ function TwForm({ data, onClose, onDone }) {
       )}
       {!isNew && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={active} onChange={(e) => setActive(e.target.checked)} /> เปิดใช้งาน</label>}
       <button className="btn mt" onClick={save} disabled={busy}>บันทึก</button>
+    </Modal>
+  );
+}
+
+// ---------------- คลาสเรียนพิเศษ ----------------
+function ClassesCrud() {
+  const toast = useToast();
+  const [edit, setEdit] = useState(undefined); // undefined=ปิด, null=สร้างใหม่, obj=แก้
+  const [logFor, setLogFor] = useState(null);
+  const [historyFor, setHistoryFor] = useState(null);
+  // สองชุดนี้ใช้คู่กันเสมอ — เอารายชื่อเด็กไปให้ ClassForm เลือก
+  const { data, load, view } = useLoad(useCallback(
+    () => callBatch([['parent.classes.list'], ['parent.children.list']]).then(([c, k]) => ({ list: c, kids: k })), []));
+  if (view) return view;
+  const { kids } = data;
+  // แพ็กที่ปิดแล้ว (แพ็กเก่าหลังเริ่มแพ็กใหม่) ไปอยู่ท้ายรายการ
+  const list = data.list.slice().sort((a, b) => Number(b.active) - Number(a.active));
+
+  async function renew(c) {
+    const ans = prompt(`เริ่มแพ็กใหม่ของ "${c.subject}" — จำนวนครั้งทั้งแพ็ก`, String(c.totalSessions));
+    if (ans === null) return;
+    try { await call('parent.classes.renew', { id: c.id, totalSessions: Number(ans) }); toast('เริ่มแพ็กใหม่แล้ว'); load(); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+
+  async function del(c) {
+    if (!confirm(`ลบคลาส "${c.subject}" พร้อมประวัติการเรียนทั้งหมด? ย้อนกลับไม่ได้`)) return;
+    try { await call('parent.classes.delete', { id: c.id }); toast('ลบแล้ว'); load(); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>คลาสเรียนพิเศษ ({list.length})</h2>
+        <button className="btn sm" onClick={() => setEdit(null)} disabled={!kids.length}>+ เพิ่ม</button>
+      </div>
+      {!kids.length && <div className="muted">ไปเพิ่มเด็กที่แท็บ “ตัวละคร” ก่อน</div>}
+      {list.length === 0 ? <Empty /> : list.map((c) => (
+        <div key={c.id} className="item">
+          <div className="grow">
+            <div className="title" style={{ color: c.childColor }}>
+              {c.icon} {c.subject} — <Avatar c={{ photo: c.childPhoto, avatar: c.childAvatar }} size={22} /> {c.childName} {!c.active && <span className="chip bad">ปิด</span>}
+            </div>
+            <div className="sub">
+              {c.remaining > 0
+                ? <>เหลือ {c.remaining}/{c.totalSessions} ครั้ง</>
+                : <span className="chip ok">{c.active ? 'ครบแล้ว รอเริ่มใหม่' : `ครบ ${c.totalSessions} ครั้ง`}</span>}
+              {' · '}เรียนประจำวัน{(DAYS.find((x) => x[0] === String(c.dayOfWeek)) || [])[1] || '—'}
+              {c.lastSessionDate && ` · ล่าสุด ${dmy_(c.lastSessionDate)}`}
+            </div>
+            {c.note && <div className="sub muted">{c.note}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {c.active && (c.remaining > 0
+              ? <button className="btn sm" onClick={() => setLogFor(c)}>บันทึกครั้งนี้</button>
+              : <button className="btn sm" onClick={() => renew(c)}>เริ่มแพ็กใหม่</button>)}
+            <button className="btn gray sm" onClick={() => setHistoryFor(c)}>ประวัติ</button>
+            <button className="btn gray sm" onClick={() => setEdit(c)}>แก้</button>
+            <button className="btn bad sm" onClick={() => del(c)}>ลบ</button>
+          </div>
+        </div>
+      ))}
+      {edit !== undefined && <ClassForm data={edit} kids={kids} onClose={() => setEdit(undefined)} onDone={() => { setEdit(undefined); load(); }} />}
+      {logFor && <LogSessionModal pkg={logFor} onClose={() => setLogFor(null)} onDone={() => { setLogFor(null); load(); }} />}
+      {historyFor && <SessionHistory pkg={historyFor} onClose={() => setHistoryFor(null)} onChanged={load} />}
+    </div>
+  );
+}
+
+function ClassForm({ data, kids, onClose, onDone }) {
+  const toast = useToast();
+  const isNew = !data;
+  const [childId, setChildId] = useState(data?.childId || kids[0]?.id || '');
+  const [subject, setSubject] = useState(data?.subject || '');
+  const [icon, setIcon] = useState(data?.icon || '🎵');
+  const [totalSessions, setTotalSessions] = useState(data?.totalSessions || 8);
+  const [dayOfWeek, setDayOfWeek] = useState(String(data?.dayOfWeek || '7'));
+  const [note, setNote] = useState(data?.note || '');
+  const [active, setActive] = useState(data ? data.active : true);
+  const [startFrom, setStartFrom] = useState(1);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!childId) return toast('เลือกเด็กก่อน', 'err');
+    if (!subject.trim()) return toast('ใส่ชื่อวิชาก่อน', 'err');
+    setBusy(true);
+    try {
+      const p = { childId, subject, icon, totalSessions: Number(totalSessions), dayOfWeek: Number(dayOfWeek), note };
+      if (isNew) await call('parent.classes.create', { ...p, startFrom: Number(startFrom) });
+      else await call('parent.classes.update', { id: data.id, ...p, active });
+      onDone();
+    } catch (e) { toast(e.message, 'err'); setBusy(false); }
+  }
+
+  return (
+    <Modal title={isNew ? 'เพิ่มคลาสเรียน' : 'แก้ไขคลาสเรียน'} onClose={onClose}>
+      <label>เด็ก</label>
+      <div className="tag-days">
+        {kids.map((k) => (
+          <button key={k.id} className={childId === k.id ? 'on' : ''} onClick={() => setChildId(k.id)}>{k.avatar} {k.name}</button>
+        ))}
+      </div>
+      <label className="mt">ชื่อวิชา</label>
+      <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="เช่น กีตาร์" />
+      <EmojiPicker value={icon} onChange={setIcon} options={CHORE_ICONS} label="ไอคอน" />
+      <label>จำนวนครั้งทั้งแพ็ก</label>
+      <input type="number" min="1" value={totalSessions} onChange={(e) => setTotalSessions(e.target.value)} />
+      {isNew && (
+        <>
+          <label>เริ่มนับจากครั้งที่ <span style={{ opacity: 0.7 }}>— เคยเรียนมาก่อนแล้วใส่เลขครั้งถัดไป เช่น เคยเรียนแล้ว 5 ครั้งใส่ 6</span></label>
+          <input type="number" min="1" max={totalSessions} value={startFrom} onChange={(e) => setStartFrom(e.target.value)} />
+        </>
+      )}
+      <label>วันเรียนประจำ</label>
+      <div className="tag-days">
+        {DAYS.map(([d, lbl]) => <button key={d} className={dayOfWeek === d ? 'on' : ''} onClick={() => setDayOfWeek(d)}>{lbl}</button>)}
+      </div>
+      <label className="mt">หมายเหตุ</label>
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น เลื่อนได้เมื่อติดธุระ, เรียนเสริมวันอื่นได้ถ้าครูนัดเพิ่ม" />
+      {!isNew && <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={active} onChange={(e) => setActive(e.target.checked)} /> เปิดใช้งาน</label>}
+      <button className="btn mt" onClick={save} disabled={busy}>บันทึก</button>
+    </Modal>
+  );
+}
+
+function LogSessionModal({ pkg, onClose, onDone }) {
+  const toast = useToast();
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState('เรียนแล้ว');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await call('parent.classes.logSession', { packageId: pkg.id, date, status, note });
+      toast('บันทึกแล้ว');
+      onDone();
+    } catch (e) { toast(e.message, 'err'); setBusy(false); }
+  }
+
+  return (
+    <Modal title={`บันทึกครั้งนี้: ${pkg.subject}`} onClose={onClose}>
+      <label>วันที่</label>
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      <label>สถานะ</label>
+      <div className="tag-days">
+        {['เรียนแล้ว', 'เลื่อน'].map((s) => (
+          <button key={s} className={status === s ? 'on' : ''} onClick={() => setStatus(s)}>{s}</button>
+        ))}
+      </div>
+      <label className="mt">หมายเหตุ (ถ้ามี)</label>
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น เรียนเสริมแทนวันที่เลื่อน" />
+      <button className="btn mt" onClick={save} disabled={busy}>บันทึก</button>
+    </Modal>
+  );
+}
+
+function SessionHistory({ pkg, onClose, onChanged }) {
+  const toast = useToast();
+  const { data: sessions, load, view } = useLoad(useCallback(() => call('parent.classes.sessions', { packageId: pkg.id }), [pkg.id]));
+
+  async function del(s) {
+    if (!confirm(`ลบประวัติวันที่ ${dmy_(s.date)}?`)) return;
+    try { await call('parent.classes.deleteSession', { id: s.id }); toast('ลบแล้ว'); load(); onChanged(); }
+    catch (e) { toast(e.message, 'err'); }
+  }
+
+  return (
+    <Modal title={`ประวัติ: ${pkg.subject}`} onClose={onClose}>
+      {view || (sessions.length === 0 ? <Empty text="ยังไม่มีประวัติ" /> : sessions.map((s) => (
+        <div key={s.id} className="item">
+          <div className="grow">
+            <div className="title">{dmy_(s.date)} <span className={'chip ' + (s.status === 'เรียนแล้ว' ? 'ok' : 'bad')}>{s.status}</span></div>
+            {s.note && <div className="sub muted">{s.note}</div>}
+          </div>
+          <button className="btn bad sm" onClick={() => del(s)}>ลบ</button>
+        </div>
+      )))}
     </Modal>
   );
 }

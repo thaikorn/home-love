@@ -16,6 +16,45 @@ export function setToken(t) {
   if (t) localStorage.setItem(TOKEN_KEY, t);
   else localStorage.removeItem(TOKEN_KEY);
   BOOT.clear(); // ข้อมูลที่ prefetch ไว้เป็นของ token เดิม ใช้กับคนที่เพิ่งล็อกอินไม่ได้
+  clearSnaps();
+}
+
+// ---------- ภาพจำหน้าจอล่าสุด (โชว์ก่อน แล้วค่อยอัปเดตตามมา) ----------
+/**
+ * Apps Script บางรอบตอบช้ามาก (วัดได้ 15–35 วินาทีตอนสคริปต์เย็น) ถ้ารอข้อมูลสดอย่างเดียว
+ * เด็กจะจ้องสปินเนอร์นานจนคิดว่าแอปค้าง — useLoad จึงเก็บข้อมูลรอบล่าสุดของแต่ละหน้าไว้ในเครื่อง
+ * เปิดหน้ามาก็โชว์ของเดิมทันที แล้วค่อยแทนที่ด้วยข้อมูลสดเมื่อ server ตอบ
+ * คีย์ผูกกับ token — สลับคนล็อกอินแล้วห้ามเห็นข้อมูลของคนก่อน (setToken ล้างทิ้งทั้งหมดด้วย)
+ * ของที่เก็บเป็นแค่ภาพจำไว้โชว์ การตรวจสิทธิ์/แต้มจริงยังอยู่ที่ server ทุกครั้ง
+ */
+const SNAP_PREFIX = 'homelove_snap:';
+const snapKey = (key) => SNAP_PREFIX + getToken().slice(-12) + ':' + key;
+export function readSnap(key) {
+  if (!key || !getToken()) return null;
+  try { const raw = localStorage.getItem(snapKey(key)); return raw ? JSON.parse(raw) : null; }
+  catch { return null; }
+}
+export function writeSnap(key, data) {
+  if (!key || !getToken()) return;
+  try { localStorage.setItem(snapKey(key), JSON.stringify(data)); } catch { /* เต็ม/โหมดส่วนตัว — ข้ามไป */ }
+}
+function clearSnaps() {
+  try {
+    Object.keys(localStorage).filter((k) => k.indexOf(SNAP_PREFIX) === 0).forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+}
+
+// ---------- มีคำขอค้างอยู่ไหม (ไว้โชว์ตัวบอกว่ากำลังอัปเดต) ----------
+let inflight = 0;
+const busySubs = new Set();
+function setInflight(d) {
+  inflight += d;
+  busySubs.forEach((cb) => { try { cb(inflight > 0); } catch { /* ignore */ } });
+}
+export function onBusy(cb) {
+  busySubs.add(cb);
+  cb(inflight > 0);
+  return () => busySubs.delete(cb);
 }
 
 /**
@@ -77,6 +116,7 @@ async function post(action, params) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   let json;
+  setInflight(1);
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
@@ -90,6 +130,7 @@ async function post(action, params) {
     throw new Error('เชื่อมต่อไม่ได้ — เช็กอินเทอร์เน็ตแล้วลองใหม่');
   } finally {
     clearTimeout(timer);
+    setInflight(-1);
   }
   noteBuild_(json.build);
   if (!json.ok) throw new Error(json.error || 'เกิดข้อผิดพลาด');
@@ -207,6 +248,25 @@ export function fileToDataUrl(file, maxSize = 1280, quality = 0.8) {
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// รูปโปรไฟล์: ครอบตรงกลางเป็นสี่เหลี่ยมจัตุรัสแล้วย่อ — 160px JPEG ราว 8–12KB พอใส่เซลล์ชีตได้สบาย
+export function fileToAvatarDataUrl(file, size = 160, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.onerror = reject;

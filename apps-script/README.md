@@ -85,6 +85,7 @@ cd ../apps-script && npm run sync   # คัดลอก dist/index.html -> Inde
 - เด็ก: `child.state`, `child.chores`, `child.submit {choreId,timeWindowId,photo,teamMemberIds}`, `child.submissions`, `child.rewards`, `child.redeem {rewardId}`, `child.redemptions`, `child.wish {text}`
 - ผู้ปกครอง (ตรวจงาน/แลก/wish): `parent.reviewQueue`, `parent.approve {submissionId,quality}`, `parent.reject {submissionId,reason}`, `parent.adjustPoints {childId,delta,reason}`, `parent.adjustments`, `parent.redemptionQueue`, `parent.approveRedeem`, `parent.rejectRedeem`, `parent.wishes`, `parent.convertWish`, `parent.closeWish`, `parent.report`
 - ผู้ปกครอง (ตั้งค่า CRUD): `parent.children.*`, `parent.chores.*`, `parent.rewards.*`, `parent.timewindows.*` (`.list/.create/.update/.delete`)
+- ผู้ปกครอง (คลาสเรียน): `parent.classes.list`, `parent.classes.create`, `parent.classes.update`, `parent.classes.delete`, `parent.classes.sessions {packageId}`, `parent.classes.logSession {packageId,date,status,note}`, `parent.classes.deleteSession {id}`
 
 ## ข้อควรรู้
 - โควตา Apps Script (อีเมล/วัน, เวลา execution) เพียงพอสำหรับครอบครัวเดียว

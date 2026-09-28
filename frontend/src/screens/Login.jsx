@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { call } from '../api.js';
-import { useToast, Loading } from '../components.jsx';
+import { useToast, Loading, Avatar } from '../components.jsx';
 
 export default function Login({ onLogin }) {
   const [mode, setMode] = useState('child'); // 'child' | 'parent'
@@ -59,7 +59,7 @@ function ChildLogin({ onLogin, toParent }) {
               <div className="avatars">
                 {children.map((c) => (
                   <button key={c.id} className="avatar-btn" style={{ borderColor: c.color }} onClick={() => setPicked(c)}>
-                    <div className="face">{c.avatar || '🙂'}</div>
+                    <Avatar c={c} size={84} />
                     <div className="nm">{c.name}</div>
                   </button>
                 ))}
@@ -74,7 +74,7 @@ function ChildLogin({ onLogin, toParent }) {
   return (
     <div>
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 60 }}>{picked.avatar}</div>
+        <Avatar c={picked} size={96} />
         <h2>{picked.name} — ใส่ PIN เพื่อเริ่มภารกิจ</h2>
         <div className="pin-dots">
           {[0, 1, 2, 3].map((i) => <div key={i} className={'dot' + (i < pin.length ? ' on' : '')} />)}

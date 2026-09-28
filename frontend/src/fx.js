@@ -59,7 +59,7 @@ export function play(name) {
 }
 
 // ---------- confetti ----------
-const COLORS = ['#ffc93c', '#38e8ff', '#a06bff', '#35d38a', '#ff5d6c', '#ffffff'];
+const COLORS = ['#ffc93c', '#45d6ff', '#ff3d6e', '#ff9f43', '#35d38a', '#ffffff'];
 
 export function confetti(count = 90, seconds = 1.6) {
   if (typeof document === 'undefined') return;
