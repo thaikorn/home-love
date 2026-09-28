@@ -494,6 +494,7 @@ textarea { min-height: 80px; resize: vertical; }
 .empty { text-align: center; color: var(--muted); padding: 40px 12px; }
 .right { text-align: right; }
 .mt { margin-top: 12px; }
+.mt-xs { margin-top: 4px; }
 .tag-days { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag-days button {
   border: 2px solid var(--line); background: #1f141a; color: var(--ink);
