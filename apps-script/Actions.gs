@@ -53,8 +53,34 @@ function nextStreakTier_(streak, cfg) {
 }
 
 // งานที่เด็กทำได้ตอนนี้ (กรองเฉพาะช่วงเวลาที่เปิด)
-function availableChores_() {
+/**
+ * กลุ่มงานที่เด็กคนนี้ใช้สิทธิ์ไปแล้ววันนี้ -> ชื่องานที่ส่งไป  เช่น { 'ดนตรี': 'ซ้อมดนตรี' }
+ * นับทั้งงานที่ส่งเองและที่ถูกชวนเป็นทีม · งานที่ถูกตีกลับไม่นับ จะได้ส่งใหม่ได้
+ */
+function groupsUsedToday_(childId, date) {
+  const groupOf = {};
+  const names = {};
+  readAll_(TAB.Chores).forEach(function (c) {
+    const g = String(c.dailyGroup || '').trim();
+    if (g) { groupOf[c.id] = g; names[c.id] = c.name; }
+  });
+  const used = {};
+  if (!Object.keys(groupOf).length) return used;
+  const tz = TZ_();
+  where_(TAB.Submissions, function (x) {
+    return groupOf[x.choreId] && x.status !== SUB_STATUS.REJECTED &&
+      (String(x.submittedBy) === String(childId) || toArr_(x.teamMembers).indexOf(String(childId)) >= 0);
+  }).forEach(function (x) {
+    const iso = toIso_(x.submittedAt);
+    if (iso && Utilities.formatDate(new Date(iso), tz, 'yyyy-MM-dd') === date) used[groupOf[x.choreId]] = names[x.choreId];
+  });
+  return used;
+}
+
+// งานที่ทำได้ตอนนี้ของเด็กคนนี้ — ตัดงานในกลุ่มที่วันนี้ใช้สิทธิ์ไปแล้วออก
+function availableChores_(childId) {
   const ref = now_();
+  const used = childId ? groupsUsedToday_(childId, ref.date) : {};
   const open = openWindowsNow_();
   const openIds = {};
   open.forEach(function (tw) { openIds[tw.id] = tw; });
@@ -63,6 +89,7 @@ function availableChores_() {
   chores.forEach(function (c) {
     const wins = toArr_(c.timeWindowIds).filter(function (id) { return openIds[id]; });
     if (!wins.length) return;
+    if (used[String(c.dailyGroup || '').trim()]) return;
     // เลือกช่วงเวลาที่เปิดช่วงแรกให้ใช้ส่ง
     const tw = openIds[wins[0]];
     result.push({
@@ -80,7 +107,7 @@ function availableChores_() {
 const CHILD_ACTIONS = {
   'child.state': function (s) { return childState_(s.refId); },
 
-  'child.chores': function () { return availableChores_(); },
+  'child.chores': function (s) { return availableChores_(s.refId); },
 
   // ตัวเลขบนเมนู (HUD): ภารกิจที่ทำได้ตอนนี้ / ผลตรวจที่เพิ่งออก
   'child.counts': function (s) {
@@ -89,7 +116,7 @@ const CHILD_ACTIONS = {
         toArr_(x.teamMembers).indexOf(String(s.refId)) >= 0;
     });
     return {
-      chores: availableChores_().length,
+      chores: availableChores_(s.refId).length,
       pending: mine.filter(function (x) { return x.status === SUB_STATUS.PENDING; }).length,
     };
   },
@@ -107,9 +134,21 @@ const CHILD_ACTIONS = {
       if (!isWindowOpenNow_(tw)) throw new Error('หมดช่วงเวลาแล้ว ส่งงานไม่ได้');
       if (!p.photo) throw new Error('ต้องแนบรูปถ่ายผลงาน');
 
-      const up = uploadPhoto_(p.photo, 'sub_' + p.choreId + '_' + Date.now());
       const team = (p.teamMemberIds || []).map(String).filter(function (id) { return id !== String(s.refId); });
       const members = [String(s.refId)].concat(team);
+      // งานกลุ่มวันละครั้ง — เช็กทุกคนในทีม (ก่อนอัปโหลดรูป จะได้ไม่มีไฟล์ค้างใน Drive)
+      const group = String(chore.dailyGroup || '').trim();
+      if (group) {
+        const today = now_().date;
+        members.forEach(function (id) {
+          const done = groupsUsedToday_(id, today)[group];
+          if (!done) return;
+          const who = id === String(s.refId) ? 'วันนี้' : ((findById_(TAB.Children, id) || {}).name || 'เพื่อน') + ' วันนี้';
+          throw new Error(who + 'ส่ง "' + done + '" ไปแล้ว — งานกลุ่ม "' + group + '" ทำได้วันละ 1 อย่าง');
+        });
+      }
+
+      const up = uploadPhoto_(p.photo, 'sub_' + p.choreId + '_' + Date.now());
 
       const sub = {
         id: newId_('sub'), choreId: chore.id, timeWindowId: tw.id,
