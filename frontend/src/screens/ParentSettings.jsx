@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { call, callBatch, fileToAvatarDataUrl } from '../api.js';
 import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS, Avatar } from '../components.jsx';
-import { stageShow, spotlightFlash, play, floatText } from '../fx.js';
+import { stageShow, spotlightFlash, giftPop, play, floatText } from '../fx.js';
 
 // 'YYYY-MM-DD' -> 'DD/MM/YYYY' — จัดรูปแบบตรงจากสตริง ไม่ผ่าน Date object กันเขตเวลาเลื่อนวัน
 function dmy_(dateStr) {
@@ -172,9 +172,10 @@ function GameConfig() {
       {/* ดูฉากฉลองแบบที่ลูกๆ เห็น โดยไม่ต้องรอให้เกิดจริง — ไม่ยิง server */}
       <div className="card mt">
         <h2>🎆 ทดสอบฉากฉลอง</h2>
-        <p className="muted">กดดูว่าตอนลูกส่งงาน เลเวลอัป ปิดโชว์ หรือได้แผ่นเสียงทองคำ จะเห็นอะไร</p>
+        <p className="muted">กดดูว่าตอนลูกส่งงาน แลกของ เลเวลอัป ปิดโชว์ หรือได้แผ่นเสียงทองคำ จะเห็นอะไร</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <button className="btn sm" onClick={() => { spotlightFlash(); play('success'); floatText('ส่งงานแล้ว!'); }}>ส่งงาน</button>
+          <button className="btn sm" onClick={() => { giftPop(); play('coin'); floatText('-50 ◆', { className: 'cool' }); }}>แลกของ</button>
           <button className="btn sm" onClick={() => stageShow({ kicker: '🎶 LEVEL UP! 🎶', big: 8, sub: '🥁 วงโรงเรียน' })}>เลเวลอัป</button>
           <button className="btn sm" onClick={() => stageShow({ kicker: '🏟️ ปิดโชว์สำเร็จ!', big: '🎪', sub: 'เวทีงานวัด · ทุกคน +30 แต้ม', sound: 'boss' })}>ปิดโชว์</button>
           <button className="btn sm" onClick={() => stageShow({ kicker: '💿 แผ่นเสียงทองคำ!', big: '7 วัน', sub: 'ทำต่อเนื่องครบแล้ว สุดยอด!', record: true })}>แผ่นเสียง</button>

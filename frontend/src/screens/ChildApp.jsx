@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call, callBatch, fileToDataUrl } from '../api.js';
 import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate, Avatar, BusyDot } from '../components.jsx';
-import { floatText, play, checkLevelUp, checkConcert, checkRecords, spotlightFlash, reducedMotion, soundOn, toggleSound } from '../fx.js';
+import { floatText, play, checkLevelUp, checkConcert, checkRecords, spotlightFlash, giftPop, reducedMotion, soundOn, toggleSound } from '../fx.js';
 
 const TABS = [
   { key: 'home', label: 'หน้าหลัก', ic: '🎸' },
@@ -407,7 +407,7 @@ function Shop() {
     if (points < r.cost) return toast('แต้มยังไม่พอ', 'err');
     try {
       await call('child.redeem', { rewardId: r.id });
-      play('coin'); floatText(`-${r.cost} ◆`, { className: 'cool' });
+      giftPop(); play('coin'); floatText(`-${r.cost} ◆`, { className: 'cool' });
       toast('ขอแลกแล้ว รอผู้ปกครองอนุมัติ 🎁');
       load();
     } catch (e) { toast(e.message, 'err'); }
