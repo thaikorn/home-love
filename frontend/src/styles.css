@@ -834,3 +834,20 @@ textarea { min-height: 80px; resize: vertical; }
   }
   .curtain-intro { display: none; }
 }
+
+/* ---------- แลกของ: กล่องของขวัญเด้ง ส่าย แล้วแตก (giftPop ใน fx.js) ---------- */
+.fx-gift {
+  position: fixed; left: 50%; top: 38%; z-index: 90; pointer-events: none;
+  font-size: 96px; line-height: 1; margin: -48px 0 0 -48px;
+  filter: drop-shadow(0 0 24px rgba(255, 201, 60, 0.8));
+  animation: gift 1s ease forwards;
+}
+@keyframes gift {
+  0% { transform: scale(0.2); opacity: 0; }
+  25% { transform: scale(1.15); opacity: 1; }
+  35% { transform: scale(1) rotate(-12deg); }
+  45% { transform: rotate(12deg); }
+  55% { transform: rotate(-8deg); }
+  62% { transform: scale(1.1) rotate(0); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}

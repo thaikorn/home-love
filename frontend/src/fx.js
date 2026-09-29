@@ -260,6 +260,17 @@ export function spotlightFlash() {
   confetti(70, 1.3);
 }
 
+// ฉลองสั้นๆ ตอนแลกของ — กล่องของขวัญเด้งขึ้นกลางจอ ส่ายตัว แล้วระเบิดเป็นโน้ต/confetti
+export function giftPop() {
+  if (typeof document === 'undefined' || reducedMotion()) return;
+  const el = document.createElement('div');
+  el.className = 'fx-gift';
+  el.textContent = '🎁';
+  document.body.appendChild(el);
+  setTimeout(() => confetti(80, 1.4), 650);   // ตอนกล่องแตก
+  setTimeout(() => el.remove(), 1000);
+}
+
 // ---------- ฉลองย้อนหลังให้เด็ก: เทียบกับค่าที่จำไว้ในเครื่อง ----------
 // ครั้งแรกที่เห็น (ยังไม่มีค่าจำ) แค่จำไว้ ไม่ฉลอง — กันฉากเด้งตอนเปิดแอปเครื่องใหม่
 function rememberAndCompare(key, value) {
