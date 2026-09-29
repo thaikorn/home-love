@@ -9,8 +9,8 @@ function dmy_(dateStr) {
 }
 
 const SUBTABS = [
-  { key: 'children', label: 'ตัวละคร', ic: '🧒' },
-  { key: 'chores', label: 'ภารกิจ', ic: '⚔️' },
+  { key: 'children', label: 'สมาชิกวง', ic: '🎤' },
+  { key: 'chores', label: 'เพลง', ic: '🎼' },
   { key: 'rewards', label: 'ของรางวัล', ic: '🎁' },
   { key: 'timewindows', label: 'ช่วงเวลา', ic: '⏰' },
   { key: 'classes', label: 'คลาสเรียน', ic: '🎵' },
@@ -94,24 +94,24 @@ function GameConfig() {
       </div>
 
       <div className="card">
-        <h2>🔥 สตรีคกับโล่</h2>
+        <h2>🔥 สตรีคกับตั๋วสำรอง</h2>
         <label>โบนัสทำต่อเนื่อง <span style={{ opacity: 0.7 }}>— "จำนวนวัน:% ที่เพิ่ม" คั่นด้วยจุลภาค</span></label>
         <input value={form.streakBonusTiers} onChange={set('streakBonusTiers')} placeholder="3:10,7:20,14:30,30:50" />
         <div className="muted">ตัวอย่าง 3:10,7:20 = ทำติดกัน 3 วันได้เพิ่ม 10% · ครบ 7 วันได้เพิ่ม 20%</div>
         <div className="row mt">
           <div>
-            <label>ราคาโล่ (แต้ม)</label>
+            <label>ราคาตั๋วสำรอง (แต้ม)</label>
             <input type="number" min="0" value={form.streakShieldCost} onChange={set('streakShieldCost')} />
           </div>
           <div>
-            <label>ถือโล่ได้สูงสุด</label>
+            <label>ถือตั๋วสำรองได้สูงสุด</label>
             <input type="number" min="0" max="20" value={form.streakShieldMax} onChange={set('streakShieldMax')} />
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h2>📜 ภารกิจวันกับเลเวล</h2>
+        <h2>🎧 เซ็ตลิสต์วันกับเลเวล</h2>
         <div className="row">
           <div>
             <label>ทำครบกี่งานต่อวัน</label>
@@ -127,18 +127,18 @@ function GameConfig() {
       </div>
 
       <div className="card">
-        <h2>🐉 บอสประจำเดือน</h2>
+        <h2>🏟️ คอนเสิร์ตประจำเดือน (บอส)</h2>
         <p className="muted">
-          เจอทีละตัวเรียงกัน ล้มตัวที่ 1 แล้วตัวที่ 2 ถึงจะโผล่ · เลือดคิดจากแต้มที่ทุกคนในบ้านทำได้รวมกันตั้งแต่วันที่ 1
-          ของเดือน · ขึ้นเดือนใหม่เริ่มนับใหม่ทั้งหมด · เว้นชื่อว่าง = ปิดบอสตัวนั้น
+          เล่นทีละเวทีเรียงกัน ปิดโชว์เวทีที่ 1 แล้วเวทีที่ 2 ถึงจะเปิด · เสียงเชียร์คิดจากแต้มที่ทุกคนในบ้านทำได้รวมกันตั้งแต่วันที่ 1
+          ของเดือน · ขึ้นเดือนใหม่เริ่มนับใหม่ทั้งหมด · เว้นชื่อว่าง = ปิดเวทีนั้น
         </p>
         {BOSS_SLOTS.map((i) => (
           <div key={i} className="boss-row">
-            <div className="bar-label"><span>ตัวที่ {i}</span><span>{form['boss' + i + 'Emoji']}</span></div>
+            <div className="bar-label"><span>เวทีที่ {i}</span><span>{form['boss' + i + 'Emoji']}</span></div>
             <div className="row">
               <div style={{ flex: 3 }}>
                 <label>ชื่อ</label>
-                <input value={form['boss' + i + 'Name']} onChange={set('boss' + i + 'Name')} placeholder="เว้นว่าง = ไม่ใช้ตัวนี้" />
+                <input value={form['boss' + i + 'Name']} onChange={set('boss' + i + 'Name')} placeholder="เว้นว่าง = ไม่ใช้เวทีนี้" />
               </div>
               <div style={{ flex: 1 }}>
                 <label>อีโมจิ</label>
@@ -147,7 +147,7 @@ function GameConfig() {
             </div>
             <div className="row">
               <div>
-                <label>เลือด (แต้มที่ต้องสะสม)</label>
+                <label>เสียงเชียร์ (แต้มที่ต้องสะสม)</label>
                 <input type="number" min="1" value={form['boss' + i + 'Target']} onChange={set('boss' + i + 'Target')} />
               </div>
               <div>
@@ -158,7 +158,7 @@ function GameConfig() {
           </div>
         ))}
         <div className="muted mt">
-          ล้มครบ{liveSlots.length > 1 ? `ทั้ง ${liveSlots.length} ตัว` : ''}ต้องใช้ {totalHp} แต้ม ·
+          ปิดโชว์ครบ{liveSlots.length > 1 ? `ทั้ง ${liveSlots.length} เวที` : ''}ต้องใช้ {totalHp} แต้ม ·
           เด็กแต่ละคนจะได้รวม {totalReward} แต้ม
         </div>
       </div>
@@ -586,7 +586,7 @@ function ClassesCrud() {
         <h2>คลาสเรียนพิเศษ ({list.length})</h2>
         <button className="btn sm" onClick={() => setEdit(null)} disabled={!kids.length}>+ เพิ่ม</button>
       </div>
-      {!kids.length && <div className="muted">ไปเพิ่มเด็กที่แท็บ “ตัวละคร” ก่อน</div>}
+      {!kids.length && <div className="muted">ไปเพิ่มเด็กที่แท็บ “สมาชิกวง” ก่อน</div>}
       {list.length === 0 ? <Empty /> : list.map((c) => (
         <div key={c.id} className="item">
           <div className="grow">

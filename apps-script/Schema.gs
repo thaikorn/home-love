@@ -131,9 +131,9 @@ const DEFAULT_CONFIG = {
   // บอสประจำเดือน: พี่น้องช่วยกันสะสมแต้มรวมให้ถึงเป้า เจอทีละตัวเรียงกัน 3 ตัวใน 1 เดือน
   // ล้มตัวก่อนหน้าแล้วตัวถัดไปถึงจะโผล่ · เว้นชื่อว่าง = ปิดบอสตัวนั้น
   // Target = เลือดของบอสตัวนั้นเอง (ไม่ใช่ยอดสะสมรวม) · Reward = แต้มที่เด็กแต่ละคนได้เมื่อล้มสำเร็จ
-  boss1Name: 'ราชาความรก', boss1Emoji: '👹', boss1Target: '300', boss1Reward: '30',
-  boss2Name: 'ปีศาจกองผ้า', boss2Emoji: '👺', boss2Target: '400', boss2Reward: '50',
-  boss3Name: 'จอมมารจานสกปรก', boss3Emoji: '🐲', boss3Target: '500', boss3Reward: '80',
+  boss1Name: 'เวทีงานวัด', boss1Emoji: '🎪', boss1Target: '300', boss1Reward: '30',
+  boss2Name: 'ฮอลล์ใหญ่', boss2Emoji: '🏟️', boss2Target: '400', boss2Reward: '50',
+  boss3Name: 'คอนเสิร์ตสเตเดียม', boss3Emoji: '🌟', boss3Target: '500', boss3Reward: '80',
   sessionHours: '720',     // อายุ session (ชั่วโมง) = 30 วัน
 };
 

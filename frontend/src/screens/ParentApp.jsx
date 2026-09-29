@@ -146,14 +146,14 @@ function ReviewModal({ sub, onClose, onDone }) {
         : `อนุมัติแล้ว +${r.pointsPerPerson} แต้ม/คน`;
       if (r.windowMultiplier > 1) msg += ` · ตัวคูณวันนี้ ×${r.windowMultiplier}`;
       const daily = kids.filter((k) => k.dailyQuestBonus > 0);
-      if (daily.length) msg += ` · ภารกิจวัน +${daily[0].dailyQuestBonus} 📜`;
-      if (kids.some((k) => k.shieldUsed)) msg += ' · ใช้โล่กันสตรีค 🛡️';
+      if (daily.length) msg += ` · เซ็ตลิสต์วัน +${daily[0].dailyQuestBonus} 🎧`;
+      if (kids.some((k) => k.shieldUsed)) msg += ' · ใช้ตั๋วสำรองกันสตรีค 🎟️';
       const nb = Object.values(r.newBadges || {}).flat();
-      if (nb.length) msg += ` · ได้เหรียญใหม่ 🏅`;
+      if (nb.length) msg += ` · ได้แผ่นเสียงทองคำใหม่ 💿`;
       const won = r.bossWinners || [];
       if (won.length) {
         confetti(140, 2.2); play('boss');
-        msg += ` · ⚔️ ล้ม${won[0].bossEmoji || ''}${won[0].bossName || 'บอส'}สำเร็จ! ทุกคนได้ +${won[0].points}`;
+        msg += ` · 🏟️ ปิดโชว์${won[0].bossEmoji || ''}${won[0].bossName || 'คอนเสิร์ต'}สำเร็จ! ทุกคนได้ +${won[0].points}`;
       } else {
         confetti(60, 1.2); play('success');
       }

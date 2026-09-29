@@ -5,10 +5,10 @@ import { confetti, floatText, play, checkLevelUp, soundOn, toggleSound } from '.
 
 const TABS = [
   { key: 'home', label: 'หน้าหลัก', ic: '🎸' },
-  { key: 'chores', label: 'ภารกิจ', ic: '🥁' },
+  { key: 'chores', label: 'เพลง', ic: '🎼' },
   { key: 'status', label: 'สถานะ', ic: '📋' },
-  { key: 'shop', label: 'ร้านค้า', ic: '🎁' },
-  { key: 'wish', label: 'อธิษฐาน', ic: '⭐' },
+  { key: 'shop', label: 'ร้านค้า', ic: '🛍️' },
+  { key: 'wish', label: 'อธิษฐาน', ic: '🌟' },
 ];
 
 export default function ChildApp({ session, onLogout }) {
@@ -53,7 +53,7 @@ function SoundToggle() {
 // แต้มสะสมทั้งหมดของเด็กหนึ่งคน — ถอยไปใช้แต้มคงเหลือถ้า payload เก่ายังค้างตอน deploy คาบเกี่ยว
 const totalOf = (c) => (c.xp != null ? c.xp : c.points);
 
-// กระดานผู้นำ — สัปดาห์นี้กับสะสมใช้หน้าตาเดียวกัน ต่างแค่ลำดับกับเลขที่โชว์
+// ชาร์ตเพลงฮิต (กระดานผู้นำ) — สัปดาห์นี้กับสะสมใช้หน้าตาเดียวกัน ต่างแค่ลำดับกับเลขที่โชว์
 function LeaderCard({ title, rows, score, note }) {
   return (
     <div className="card">
@@ -87,8 +87,8 @@ function Home() {
   async function buyShield() {
     try {
       const r = await call('child.buyShield');
-      play('coin'); floatText('🛡️ +1', { className: 'cool' });
-      toast(`ได้โล่แล้ว! มีโล่ ${r.shields} อัน`);
+      play('coin'); floatText('🎟️ +1', { className: 'cool' });
+      toast(`ได้ตั๋วสำรองแล้ว! มี ${r.shields} ใบ`);
       load();
     } catch (e) { play('error'); toast(e.message, 'err'); }
   }
@@ -118,7 +118,7 @@ function Home() {
       </div>
 
       <div className="card">
-        <h2>🔥 คอมโบทำต่อเนื่อง</h2>
+        <h2>🔥 ออนทัวร์ต่อเนื่อง</h2>
         {st.streakBonusPercent > 0
           ? <p>ทำติดกัน <b>{st.streakCurrent} วัน</b> → ทุกงานได้แต้ม <b style={{ color: 'var(--gold)' }}>+{st.streakBonusPercent}%</b> 🎉</p>
           : <p className="muted">ทำงานให้ผ่านทุกวันติดกัน แล้วจะได้แต้มเพิ่มทุกงาน</p>}
@@ -137,7 +137,7 @@ function Home() {
 
       {st.dailyQuest && st.dailyQuest.bonus > 0 && (
         <div className="card">
-          <h2>📜 ภารกิจประจำวัน</h2>
+          <h2>🎧 เซ็ตลิสต์ประจำวัน</h2>
           <div className="bar-label">
             <span>ทำงานให้ผ่านครบ {st.dailyQuest.target} ชิ้นวันนี้ → +{st.dailyQuest.bonus} แต้ม</span>
             <span>{st.dailyQuest.done}/{st.dailyQuest.target}</span>
@@ -148,11 +148,11 @@ function Home() {
       )}
 
       <div className="card">
-        <h2>🛡️ โล่กันสตรีคขาด</h2>
-        <p className="muted">ถ้าลืมทำงานไป 1 วัน โล่จะกันไม่ให้สตรีคหลุด (ใช้อัตโนมัติ)</p>
+        <h2>🎟️ ตั๋วสำรอง กันทัวร์สะดุด</h2>
+        <p className="muted">ถ้าลืมทำงานไป 1 วัน ตั๋วสำรองจะกันไม่ให้สตรีคหลุด (ใช้อัตโนมัติ)</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ fontSize: 30 }}>{'🛡️'.repeat(st.shields) || '—'}</div>
-          <div className="grow" style={{ flex: 1 }}>มีอยู่ {st.shields}/{st.shieldMax} อัน</div>
+          <div style={{ fontSize: 30 }}>{'🎟️'.repeat(st.shields) || '—'}</div>
+          <div className="grow" style={{ flex: 1 }}>มีอยู่ {st.shields}/{st.shieldMax} ใบ</div>
           <button className="btn sm" disabled={st.shields >= st.shieldMax || st.points < st.shieldCost} onClick={buyShield}>
             ซื้อ {st.shieldCost} แต้ม
           </button>
@@ -162,13 +162,13 @@ function Home() {
       {board.length > 1 && (
         <>
           <LeaderCard
-            title="🏆 กระดานผู้นำสัปดาห์นี้"
+            title="📻 ชาร์ตเพลงฮิตสัปดาห์นี้"
             rows={board}
             score={(c) => c.weekPoints}
             note="นับแต้มที่ทำได้ตั้งแต่วันจันทร์"
           />
           <LeaderCard
-            title="👑 กระดานผู้นำสะสม"
+            title="💿 ชาร์ตตลอดกาล"
             rows={board.slice().sort(function (a, b) { return totalOf(b) - totalOf(a); })}
             score={totalOf}
             note="นับแต้มที่หามาได้ทั้งหมด — แลกของรางวัลแล้วไม่ลด"
@@ -177,12 +177,12 @@ function Home() {
       )}
 
       <div className="card">
-        <h2>🏅 เหรียญที่สะสมได้</h2>
-        {st.badges.length === 0 ? <Empty text="ยังไม่มีเหรียญ — ทำงานต่อเนื่องเพื่อรับเหรียญ!" /> : (
+        <h2>💿 แผ่นเสียงทองคำ</h2>
+        {st.badges.length === 0 ? <Empty text="ยังไม่มีแผ่นเสียงทองคำ — ทำงานต่อเนื่องเพื่อรับ!" /> : (
           <div className="badges">
             {st.badges.map((b, i) => (
               <div key={i} style={{ textAlign: 'center' }}>
-                <div className="medal">🏅</div>
+                <div className="medal">💿</div>
                 <div className="muted">{b.kind.replace('streak-', '')} วัน</div>
               </div>
             ))}
@@ -193,32 +193,32 @@ function Home() {
   );
 }
 
-/** บอสประจำเดือน — เจอทีละตัว มีคิวบอกว่าล้มไปกี่ตัวแล้ว เหลืออีกกี่ตัว */
+/** คอนเสิร์ตประจำเดือน (บอส) — เล่นทีละเวที มีคิวบอกว่าจบไปกี่เวทีแล้ว เหลืออีกกี่เวที */
 function BossCard({ boss }) {
   const list = boss.bosses || [];
   return (
     <div className="card boss-card">
-      <h2>🐉 บอสประจำเดือน{list.length > 1 ? ` (ตัวที่ ${boss.index}/${boss.count})` : ''}</h2>
+      <h2>🏟️ คอนเสิร์ตประจำเดือน{list.length > 1 ? ` (เวทีที่ ${boss.index}/${boss.count})` : ''}</h2>
       <div className={'face' + (boss.defeated ? ' down' : '')}>{boss.emoji}</div>
       <div style={{ fontWeight: 800, marginBottom: 6 }}>{boss.name}</div>
       <div className="bar-label">
-        <span>{boss.defeated ? 'ล้มสำเร็จ! 🎉' : 'HP เหลือ ' + boss.hpLeft}</span>
+        <span>{boss.defeated ? 'ปิดโชว์สำเร็จ! 🎉' : 'ต้องการเสียงเชียร์อีก ' + boss.hpLeft}</span>
         <span>{boss.damage}/{boss.target}</span>
       </div>
       <div className="bar hp"><i style={{ width: (100 - boss.percent) + '%' }} /></div>
       <p className="muted" style={{ marginBottom: 0 }}>
         {boss.allDefeated
-          ? `ล้มครบทุกตัวแล้ว! เจอกันใหม่เดือนหน้า 🎉`
+          ? `เล่นครบทุกเวทีแล้ว! เจอกันทัวร์เดือนหน้า 🎉`
           : boss.defeated
             ? `ทุกคนได้ +${boss.reward} แต้ม`
-            : `ช่วยกันทั้งบ้านสะสมอีก ${boss.hpLeft} แต้ม แล้วทุกคนได้ +${boss.reward} แต้ม`}
+            : `ช่วยกันทั้งวงสะสมอีก ${boss.hpLeft} แต้ม แล้วทุกคนได้ +${boss.reward} แต้ม`}
       </p>
       {list.length > 1 && (
         <div className="boss-queue">
           {list.map((b) => (
             <div key={b.slot} className={'pip' + (b.defeated ? ' done' : (b.slot === boss.index && !boss.allDefeated ? ' now' : ''))}>
               <span className="ic">{b.emoji}</span>
-              <span>{b.defeated ? 'ล้มแล้ว' : b.slot === boss.index ? 'กำลังสู้' : 'รอคิว'}</span>
+              <span>{b.defeated ? 'จบโชว์' : b.slot === boss.index ? 'กำลังเล่น' : 'รอคิว'}</span>
             </div>
           ))}
         </div>
@@ -235,7 +235,7 @@ function Chores({ session }) {
   return (
     <div>
       <div className="card">
-        <h2>⚔️ ภารกิจที่ทำได้ตอนนี้</h2>
+        <h2>🎼 เพลงที่เล่นได้ตอนนี้</h2>
         {chores.length === 0 ? <Empty text="ตอนนี้ไม่มีงานในช่วงเวลานี้" /> : (
           <div className="tiles">
             {chores.map((c) => (
@@ -367,7 +367,7 @@ function Shop() {
       </div>
       <p className="muted" style={{ margin: '8px 0 14px' }}>แลกของแล้ว “สะสมทั้งหมด” ไม่ลดนะ — แลกได้เลย</p>
       <div className="card">
-        <h2>ร้านของรางวัล</h2>
+        <h2>🛍️ ร้านของรางวัล</h2>
         {rewards.length === 0 ? <Empty /> : rewards.map((r) => (
           <div key={r.id} className="item">
             <div className="grow"><div className="title">{r.name}</div><div className="sub">{r.cost} แต้ม</div></div>
