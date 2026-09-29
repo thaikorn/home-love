@@ -115,6 +115,11 @@ const SOUNDS = {
     kick(0); strum(0.05, [196, 247, 294, 392, 494], 1.3, 0.02);
   },
   error: () => { tones1(0, 110, 0.35, 'sawtooth', 0.05); tones1(0, 104, 0.35, 'sawtooth', 0.05); }, // เบสเพี้ยน
+  drum: () => { kick(0); noise(0, 0.25, 'highpass', 6000, 0.07); },          // กระเดื่อง + ฉาบเบาๆ (เลือกสมาชิกวง)
+  cheer: () => {                                                             // คนดูกรี๊ด — noise สองชั้นขึ้นลงไม่พร้อมกัน
+    noise(0, 2.4, 'bandpass', 1100, 0.1, 0.5);
+    noise(0.3, 2.2, 'bandpass', 2300, 0.06, 0.6);
+  },
 };
 
 export function play(name) {
@@ -126,10 +131,16 @@ export function play(name) {
 const COLORS = ['#ffc93c', '#45d6ff', '#ff3d6e', '#ff9f43', '#35d38a', '#ffffff'];
 const NOTES = ['♪', '♫', '♬', '♩'];
 
-export function confetti(count = 90, seconds = 1.6) {
+// ผู้ใช้ตั้งเครื่องให้ลดการเคลื่อนไหว → ข้ามเอฟเฟกต์ขยับ เหลือแค่ข้อความกับเสียง
+export const reducedMotion = () =>
+  typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// origin: 'center' (พุ่งจากกลางจอ) | 'cannons' (ปืนใหญ่สองข้างล่างยิงเฉียงขึ้นกลางเวที)
+export function confetti(count = 90, seconds = 1.6, origin = 'center') {
+  if (reducedMotion()) return;
   if (typeof document === 'undefined') return;
   const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:80';
+  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:96';
   const dpr = window.devicePixelRatio || 1;
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
   canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
@@ -137,11 +148,22 @@ export function confetti(count = 90, seconds = 1.6) {
   const g = canvas.getContext('2d');
   g.scale(dpr, dpr);
 
-  const bits = Array.from({ length: count }, () => ({
-    x: innerWidth / 2 + (Math.random() - 0.5) * innerWidth * 0.5,
-    y: innerHeight * 0.35 + (Math.random() - 0.5) * 60,
-    vx: (Math.random() - 0.5) * 9,
-    vy: -6 - Math.random() * 8,
+  const bits = Array.from({ length: count }, (_, i) => ({
+    ...(origin === 'cannons'
+      ? (() => {
+        const left = i % 2 === 0;
+        return {
+          x: left ? 0 : innerWidth, y: innerHeight,
+          vx: (left ? 1 : -1) * (3 + Math.random() * 6) * (innerWidth / 400),
+          vy: -(11 + Math.random() * 9) * Math.min(1.4, innerHeight / 700),
+        };
+      })()
+      : {
+        x: innerWidth / 2 + (Math.random() - 0.5) * innerWidth * 0.5,
+        y: innerHeight * 0.35 + (Math.random() - 0.5) * 60,
+        vx: (Math.random() - 0.5) * 9,
+        vy: -6 - Math.random() * 8,
+      }),
     w: 6 + Math.random() * 7,
     h: 8 + Math.random() * 9,
     rot: Math.random() * Math.PI,
@@ -179,20 +201,99 @@ export function floatText(text, opts = {}) {
   setTimeout(() => el.remove(), 1500);
 }
 
-// ---------- LEVEL UP เต็มจอ ----------
-export function levelUp(level, title) {
+// ---------- ฉากคอนเสิร์ตเต็มจอ (เลเวลอัป / ปิดโชว์ / แผ่นเสียงทองคำ) ----------
+/**
+ * ม่านแดงแหวก → สปอตไลต์สองดวงกวาด → ควันเวที → ตัวหนังสือตกลงมาเด้ง → ปืนใหญ่ confetti สองข้าง
+ * ทุกชิ้นขยับด้วย transform/opacity อย่างเดียว (GPU ทำ ไม่ต้องคำนวณ layout ใหม่) แตะจอเพื่อข้าม
+ * record: true = มีแผ่นเสียงทองหมุนอยู่หลังตัวหนังสือ
+ */
+// หลายฉากพร้อมกัน (เช่น เลเวลอัป + ปิดโชว์) ต่อคิวเล่นทีละฉาก ไม่ซ้อนทับกัน
+let showQueue = Promise.resolve();
+export function stageShow(opts) {
   if (typeof document === 'undefined') return;
-  play('levelup');
-  confetti(120, 2);
+  showQueue = showQueue.then(() => new Promise((done) => runShow(opts, done)));
+}
+
+function runShow({ kicker, big, sub, record = false, sound = 'levelup' }, done) {
+  play(sound);
+  const still = reducedMotion();
+  if (!still) setTimeout(() => play('cheer'), 650);
+
   const el = document.createElement('div');
-  el.className = 'fx-levelup';
+  el.className = 'fx-levelup stage-show' + (still ? ' still' : '');
   el.innerHTML =
-    '<div class="box"><div class="lbl">🎶 LEVEL UP! 🎶</div>' +
-    '<div class="lv">' + level + '</div>' +
-    (title ? '<div class="ttl">' + title + '</div>' : '') + '</div>';
-  el.onclick = () => el.remove();
+    '<div class="beam l"></div><div class="beam r"></div>' +
+    '<div class="smoke"><i></i><i></i><i></i></div>' +
+    '<div class="curtain l"></div><div class="curtain r"></div>' +
+    (record ? '<div class="disc"></div>' : '') + '<div class="box">' +
+    '<div class="lbl"></div><div class="lv"></div><div class="ttl"></div></div>';
+  // ชื่อเวที/ยศมาจากข้อมูลที่ผู้ปกครองพิมพ์ — ใส่ด้วย textContent ไม่ประกอบเป็น HTML
+  el.querySelector('.lbl').textContent = kicker || '';
+  el.querySelector('.lv').textContent = big == null ? '' : String(big);
+  el.querySelector('.ttl').textContent = sub || '';
+  if (!sub) el.querySelector('.ttl').remove();
+
+  let gone = false;
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    el.classList.add('out');
+    setTimeout(() => { el.remove(); done(); }, 350);
+  };
+  el.onclick = close;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2600);
+  setTimeout(() => confetti(150, 2.6, 'cannons'), 450);   // ยิงตอนม่านแหวกพอดี
+  setTimeout(close, still ? 2400 : 3600);
+}
+
+export function levelUp(level, title) {
+  stageShow({ kicker: '🎶 LEVEL UP! 🎶', big: level, sub: title });
+}
+
+// ฉลองสั้นๆ ตอนส่งงาน (เกิดบ่อย ไม่ใช้ม่าน) — สปอตไลต์วาบลงกลางจอ + น้ำพุโน้ต
+export function spotlightFlash() {
+  if (typeof document === 'undefined' || reducedMotion()) return;
+  const el = document.createElement('div');
+  el.className = 'fx-flash';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+  confetti(70, 1.3);
+}
+
+// ---------- ฉลองย้อนหลังให้เด็ก: เทียบกับค่าที่จำไว้ในเครื่อง ----------
+// ครั้งแรกที่เห็น (ยังไม่มีค่าจำ) แค่จำไว้ ไม่ฉลอง — กันฉากเด้งตอนเปิดแอปเครื่องใหม่
+function rememberAndCompare(key, value) {
+  let prev = null;
+  try { prev = localStorage.getItem(key); localStorage.setItem(key, value); } catch { /* โหมดส่วนตัว */ }
+  return prev;
+}
+
+// คอนเสิร์ตประจำเดือน — จำ "เดือน:จำนวนเวทีที่ปิดแล้ว" ขึ้นเดือนใหม่นับใหม่
+export function checkConcert(childId, boss) {
+  if (!childId || !boss || !boss.month) return;
+  const done = (boss.bosses || []).filter((b) => b.defeated);
+  const prev = rememberAndCompare('homelove_concert_' + childId, boss.month + ':' + done.length);
+  if (!prev) return;
+  const [m, n] = prev.split(':');
+  if (m !== boss.month || done.length <= parseInt(n, 10)) return;
+  const last = done[done.length - 1];
+  stageShow({
+    kicker: '🏟️ ปิดโชว์สำเร็จ!', big: last.emoji || '🎤',
+    sub: (last.name || 'คอนเสิร์ต') + (last.reward ? ` · ทุกคน +${last.reward} แต้ม` : ''),
+    sound: 'boss',
+  });
+}
+
+// แผ่นเสียงทองคำ (เหรียญสตรีค) ใบใหม่
+export function checkRecords(childId, badges) {
+  if (!childId || !badges) return;
+  const prev = rememberAndCompare('homelove_records_' + childId, String(badges.length));
+  if (prev == null || badges.length <= parseInt(prev, 10)) return;
+  const b = badges.reduce((a, x) => (String(x.awardedAt) > String(a.awardedAt) ? x : a)); // ใบล่าสุด
+  stageShow({
+    kicker: '💿 แผ่นเสียงทองคำ!', big: String(b.kind || '').replace('streak-', '') + ' วัน',
+    sub: 'ทำต่อเนื่องครบแล้ว สุดยอด!', record: true,
+  });
 }
 
 // ---------- จำเลเวลล่าสุดไว้เทียบว่าขึ้นเลเวลหรือยัง ----------

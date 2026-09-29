@@ -41,11 +41,29 @@ body {
   /* บรรทัดห้าเส้นกับโน้ตจางๆ + ไฟสปอตไลต์สองดวงส่องลงเวที + แสงแดงจากพื้นเวที */
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='220'%3E%3Cg stroke='%23fff' stroke-opacity='0.045' stroke-width='1'%3E%3Cpath d='M0 60H360M0 70H360M0 80H360M0 90H360M0 100H360'/%3E%3C/g%3E%3Cg fill='%23ffc93c' fill-opacity='0.07' font-family='serif' font-size='26'%3E%3Ctext x='40' y='92'%3E%E2%99%AA%3C/text%3E%3Ctext x='150' y='78'%3E%E2%99%AB%3C/text%3E%3Ctext x='270' y='98'%3E%E2%99%AC%3C/text%3E%3Ctext x='95' y='190' font-size='20'%3E%E2%99%A9%3C/text%3E%3Ctext x='300' y='175' font-size='18'%3E%E2%99%AA%3C/text%3E%3C/g%3E%3C/svg%3E"),
-    radial-gradient(420px 720px at 18% -12%, rgba(255, 190, 90, 0.22) 0%, transparent 62%),
-    radial-gradient(420px 720px at 82% -12%, rgba(69, 214, 255, 0.16) 0%, transparent 62%),
     radial-gradient(900px 380px at 50% 112%, rgba(255, 61, 110, 0.28) 0%, transparent 60%),
     var(--bg);
   background-attachment: fixed;
+}
+/* สปอตไลต์สองดวง (อำพันซ้าย ฟ้าขวา) แยกเป็นชั้นของตัวเอง แกว่งช้าๆ สลับจังหวะกัน
+   ขยับด้วย transform อย่างเดียว — GPU ทำ ไม่วาดหน้าใหม่ทั้งจอ เครื่องเก่าก็ไม่หน่วง */
+body::before, body::after {
+  content: ''; position: fixed; top: -30vh; width: 70vw; height: 130vh;
+  pointer-events: none; z-index: -1; transform-origin: 50% 0;
+  animation: sway 14s ease-in-out infinite alternate;
+}
+body::before {
+  left: -18vw;
+  background: radial-gradient(closest-side, rgba(255, 190, 90, 0.2), transparent);
+}
+body::after {
+  right: -18vw;
+  background: radial-gradient(closest-side, rgba(69, 214, 255, 0.15), transparent);
+  animation-delay: -7s;
+}
+@keyframes sway {
+  from { transform: rotate(-9deg); }
+  to { transform: rotate(9deg); }
 }
 
 /* vh มาก่อน dvh เสมอ — Safari เก่ากว่า 15.4 ไม่รู้จัก dvh แล้วจะทิ้งทั้งบรรทัดไปเฉยๆ */
@@ -554,3 +572,265 @@ textarea { min-height: 80px; resize: vertical; }
 .busydot { font-size: 18px; opacity: 0; transition: opacity 0.25s ease; }
 .busydot.on { opacity: 1; animation: beat 0.6s ease-in-out infinite; }
 @keyframes beat { 50% { transform: translateY(-4px) scale(1.15); } }
+
+/* =====================================================================
+   ความว้าว — ฉากคอนเสิร์ตตอนฉลอง + บรรยากาศเวที
+   หลักการ: เต็มที่เฉพาะตอนฉลอง ตอนใช้ปกติขยับน้อยและใช้แค่ transform/opacity
+   ทุกอย่างปิดเองถ้าเครื่องตั้ง "ลดการเคลื่อนไหว" (ดูท้ายไฟล์)
+   ===================================================================== */
+
+/* ---------- ฉากคอนเสิร์ตเต็มจอ (stageShow ใน fx.js) ---------- */
+.stage-show { overflow: hidden; background: rgba(6, 3, 6, 0.86); }
+.stage-show.out { animation: fadeout 0.35s ease forwards; }
+@keyframes fadeout { to { opacity: 0; } }
+
+/* ม่านแดงสองผืน แหวกออกซ้ายขวา */
+.stage-show .curtain {
+  position: absolute; top: 0; bottom: 0; width: 51%; z-index: 3;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.28) 0 10px, rgba(255,255,255,0.05) 14px, rgba(0,0,0,0.28) 26px),
+    linear-gradient(180deg, #b3122f 0%, #6d0a1c 100%);
+  box-shadow: inset 0 -30px 40px rgba(0,0,0,0.5);
+  animation: curtain-l 0.9s cubic-bezier(0.7, 0, 0.3, 1) 0.1s forwards;
+}
+.stage-show .curtain.l { left: 0; border-right: 3px solid var(--gold-dark); }
+.stage-show .curtain.r { right: 0; border-left: 3px solid var(--gold-dark); animation-name: curtain-r; }
+@keyframes curtain-l { to { transform: translateX(-102%); } }
+@keyframes curtain-r { to { transform: translateX(102%); } }
+
+/* สปอตไลต์สองดวงกวาดจากมุมบน */
+.stage-show .beam {
+  position: absolute; top: -10%; width: 44vmax; height: 130%; z-index: 1;
+  transform-origin: 50% 0; opacity: 0;
+  background: linear-gradient(180deg, rgba(255,240,200,0.55), rgba(255,240,200,0.06) 75%, transparent);
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  animation: beam-l 2.6s ease-in-out 0.35s forwards;
+}
+.stage-show .beam.l { left: -8vmax; }
+.stage-show .beam.r {
+  right: -8vmax; animation-name: beam-r;
+  background: linear-gradient(180deg, rgba(120,225,255,0.5), rgba(120,225,255,0.05) 75%, transparent);
+}
+@keyframes beam-l {
+  0% { opacity: 0; transform: rotate(-38deg); }
+  25% { opacity: 1; }
+  60% { transform: rotate(-12deg); }
+  100% { opacity: 0.85; transform: rotate(-22deg); }
+}
+@keyframes beam-r {
+  0% { opacity: 0; transform: rotate(38deg); }
+  25% { opacity: 1; }
+  60% { transform: rotate(12deg); }
+  100% { opacity: 0.85; transform: rotate(22deg); }
+}
+
+/* ควันเวทีลอยเรี่ยพื้น */
+.stage-show .smoke { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; z-index: 1; pointer-events: none; }
+.stage-show .smoke i {
+  position: absolute; bottom: -20%; width: 70vw; height: 70vw; max-width: 520px; max-height: 520px;
+  border-radius: 50%; opacity: 0;
+  background: radial-gradient(closest-side, rgba(220, 200, 255, 0.28), transparent);
+  animation: smoke 3.4s ease-out forwards;
+}
+.stage-show .smoke i:nth-child(1) { left: -15%; }
+.stage-show .smoke i:nth-child(2) { left: 30%; animation-delay: 0.25s; }
+.stage-show .smoke i:nth-child(3) { right: -15%; animation-delay: 0.5s; }
+@keyframes smoke {
+  0% { opacity: 0; transform: translateY(20%) scale(0.8); }
+  40% { opacity: 1; }
+  100% { opacity: 0.6; transform: translateY(-10%) scale(1.15); }
+}
+
+/* ตัวหนังสือตกลงมาเด้ง หลังม่านแหวก */
+.stage-show .box {
+  position: relative; z-index: 2;
+  background: rgba(20, 10, 16, 0.55);
+  animation: drop 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) 0.55s both;
+}
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-60vh) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+.stage-show .lbl { text-shadow: 0 0 12px rgba(255, 201, 60, 0.9); }
+.stage-show .lv {
+  text-shadow: 0 0 20px rgba(255, 61, 110, 0.9), 0 0 44px rgba(255, 201, 60, 0.7);
+  animation: throb 0.9s ease-in-out 1.3s 2;
+}
+@keyframes throb { 50% { transform: scale(1.12); } }
+
+/* แผ่นเสียงทองโผล่ขึ้นมาเหนือกล่องข้อความ เหมือนดึงแผ่นออกจากซอง (record: true)
+   อยู่นอกกล่อง — ถ้าอยู่ข้างในจะทับพื้นกล่องแล้วตัวหนังสือบนสีทองอ่านไม่ออก */
+.stage-show .disc {
+  position: absolute; left: 50%; top: 50%; width: 230px; height: 230px; margin: -250px 0 0 -115px;
+  z-index: 1; border-radius: 50%;
+  background:
+    radial-gradient(circle, #1a0e14 0 6px, var(--gold) 7px 30px, transparent 31px),
+    conic-gradient(from 0deg, transparent 0 15%, rgba(255,255,255,0.35) 20%, transparent 25% 65%, rgba(255,255,255,0.25) 70%, transparent 75%),
+    repeating-radial-gradient(circle, #b8860b 0 2px, #ffd766 2px 3px);
+  box-shadow: 0 0 60px rgba(255, 201, 60, 0.6);
+  animation: spin 2.4s linear infinite, discin 0.6s ease-out 0.7s backwards;
+}
+@keyframes discin { from { opacity: 0; } }
+.stage-show .disc + .box { background: rgba(20, 10, 16, 0.94); }
+
+/* ลดการเคลื่อนไหว: ไม่มีม่าน/ไฟ/ควัน เหลือกล่องข้อความจางเข้ามาเฉยๆ */
+.stage-show.still .curtain, .stage-show.still .beam, .stage-show.still .smoke { display: none; }
+.stage-show.still .box, .stage-show.still .lv, .stage-show.still .disc { animation: none; }
+
+/* ---------- ส่งงาน: สปอตไลต์วาบลงกลางจอ ---------- */
+.fx-flash {
+  position: fixed; inset: 0; z-index: 79; pointer-events: none;
+  background: radial-gradient(ellipse 45% 70% at 50% 0%, rgba(255, 236, 190, 0.55), transparent 70%);
+  animation: flash 1.2s ease-out forwards;
+}
+@keyframes flash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- หัวแอป = ป้ายไฟนีออน กะพริบเบาๆ นานๆ ที ---------- */
+.topbar h1 {
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5), 0 0 12px rgba(255, 61, 110, 0.8), 0 0 26px rgba(255, 61, 110, 0.45);
+  animation: neon 7s linear infinite;
+}
+@keyframes neon {
+  0%, 90%, 94%, 100% { opacity: 1; }
+  91% { opacity: 0.55; }
+  92% { opacity: 1; }
+  93% { opacity: 0.7; }
+}
+
+/* ---------- การ์ด/ไทล์ค่อยๆ ลอยขึ้นตอนเปิดหน้า (ครั้งเดียว) ---------- */
+/* keyframe มีแค่ from — จบแล้วไม่เหลือ transform ค้าง (transform ค้างจะทำให้ position:fixed ข้างในเพี้ยน) */
+.app-body .card, .app-body .stat, .tiles .tile { animation: rise 0.45s ease backwards; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+.tiles .tile:nth-child(2) { animation-delay: 0.05s; }
+.tiles .tile:nth-child(3) { animation-delay: 0.1s; }
+.tiles .tile:nth-child(4) { animation-delay: 0.15s; }
+.tiles .tile:nth-child(5) { animation-delay: 0.2s; }
+.tiles .tile:nth-child(n+6) { animation-delay: 0.25s; }
+.tile:active { box-shadow: 0 0 0 2px var(--purple), 0 0 28px rgba(255, 61, 110, 0.6), var(--shadow); }
+
+/* ---------- หน้าหลักเด็ก: โปสเตอร์ศิลปิน ---------- */
+.hero {
+  text-align: center; position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255, 201, 60, 0.18), transparent 70%),
+    linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
+}
+/* วงแหวนความคืบหน้า: ทองเท่ากับ % ของเลเวลนี้ ที่เหลือเป็นเทาจาง */
+.hero-ring {
+  position: relative; width: 136px; height: 136px; margin: 4px auto 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: conic-gradient(var(--gold) calc(var(--p) * 1%), rgba(255, 255, 255, 0.09) 0);
+  box-shadow: 0 0 26px rgba(255, 201, 60, 0.35);
+}
+.hero-disc {
+  position: absolute; inset: 6px; border-radius: 50%;
+  background: repeating-radial-gradient(circle, #140e12 0 2px, #2a2127 2px 3px);
+  animation: spin 12s linear infinite;
+}
+.hero-ring .av { position: relative; }
+.hero-lv {
+  position: absolute; right: -4px; bottom: 2px;
+  width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; line-height: 1;
+  background: linear-gradient(160deg, var(--gold) 0%, var(--gold-dark) 100%);
+  color: #2a1c00; box-shadow: 0 0 16px rgba(255, 201, 60, 0.5); border: 2px solid #1a0e14;
+}
+.hero-lv small { font-size: 8px; font-weight: 900; letter-spacing: 1px; }
+.hero-lv b { font-size: 17px; font-weight: 900; }
+.hero-name {
+  margin-top: 10px; font-size: 24px; font-weight: 900; letter-spacing: 0.5px; color: #fff;
+  text-shadow: 0 0 10px rgba(69, 214, 255, 0.8), 0 0 24px rgba(69, 214, 255, 0.4);
+}
+.hero-title {
+  display: inline-block; margin-top: 4px; padding: 4px 12px; border-radius: 999px;
+  font-size: 13px; font-weight: 800; color: var(--gold);
+  border: 1px solid rgba(255, 201, 60, 0.5); background: rgba(255, 201, 60, 0.1);
+}
+.hero .bar-label { text-align: left; }
+
+/* ---------- ชาร์ตเพลงฮิต: แท่นรับรางวัล 2-1-3 ---------- */
+.podium {
+  display: flex; align-items: flex-end; justify-content: center; gap: 8px;
+  padding-top: 18px; margin-bottom: 6px;
+  background: radial-gradient(ellipse 30% 90% at 50% 0%, rgba(255, 236, 190, 0.16), transparent 75%);
+}
+.pod { flex: 1; max-width: 120px; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.pod-av { position: relative; }
+.pod .crown {
+  position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+  font-size: 22px; filter: drop-shadow(0 0 8px rgba(255, 201, 60, 0.9));
+}
+.pod-name { margin-top: 4px; font-weight: 800; font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pod-pts { font-weight: 900; color: var(--gold); font-size: 15px; }
+.pod-block {
+  width: 100%; margin-top: 6px; border-radius: 10px 10px 0 0;
+  display: grid; place-items: center; font-size: 22px; font-weight: 900; color: rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, #4a2e38 0%, #24161d 100%);
+  border: 2px solid var(--line); border-bottom: none;
+}
+.pod.p1 .pod-block {
+  height: 74px; color: #2a1c00;
+  background: linear-gradient(180deg, #ffdd80 0%, var(--gold-dark) 100%); border-color: #ffeaa8;
+  box-shadow: 0 0 22px rgba(255, 201, 60, 0.45);
+}
+.pod.p2 .pod-block { height: 52px; background: linear-gradient(180deg, #d9e2ea 0%, #8a97a3 100%); color: #1d2530; border-color: #eef3f7; }
+.pod.p3 .pod-block { height: 38px; background: linear-gradient(180deg, #e0a372 0%, #9b5a2c 100%); color: #2a1406; border-color: #f2c29b; }
+.pod.p1 .pod-name { font-size: 15px; }
+
+/* ---------- หน้าเลือกสมาชิกวง: เวที ---------- */
+/* ม่านเปิดตอนเข้าแอป (ครั้งแรกของรอบ) — แค่ 1 วินาที ไม่ขวางการกด */
+.curtain-intro { position: fixed; inset: 0; z-index: 70; pointer-events: none; }
+.curtain-intro i {
+  position: absolute; top: 0; bottom: 0; width: 51%;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.28) 0 10px, rgba(255,255,255,0.05) 14px, rgba(0,0,0,0.28) 26px),
+    linear-gradient(180deg, #b3122f 0%, #6d0a1c 100%);
+  animation: curtain-l 1s cubic-bezier(0.7, 0, 0.3, 1) 0.25s forwards;
+}
+.curtain-intro i:first-child { left: 0; border-right: 3px solid var(--gold-dark); }
+.curtain-intro i:last-child { right: 0; border-left: 3px solid var(--gold-dark); animation-name: curtain-r; }
+
+/* พื้นเวทีไม้ใต้แถวสมาชิก + แสงสะท้อนจากไฟหน้าเวที */
+.avatars.stage {
+  padding-bottom: 22px;
+  background:
+    linear-gradient(180deg, transparent calc(100% - 16px), #5a3522 calc(100% - 16px), #2e1a10 100%),
+    radial-gradient(ellipse 60% 30% at 50% 100%, rgba(255, 201, 60, 0.25), transparent 80%);
+  border-radius: 0 0 12px 12px;
+}
+.avatars.stage .avatar-btn { position: relative; overflow: hidden; }
+/* กรวยไฟส่องลงมาหาแต่ละคน */
+.avatars.stage .avatar-btn::before {
+  content: ''; position: absolute; top: 0; left: 50%; width: 140%; height: 100%;
+  transform: translateX(-50%); pointer-events: none; opacity: 0.35;
+  background: linear-gradient(180deg, rgba(255, 240, 200, 0.5), transparent 85%);
+  clip-path: polygon(42% 0, 58% 0, 88% 100%, 12% 100%);
+  transition: opacity 0.2s ease;
+}
+.avatars.stage .avatar-btn > * { position: relative; }
+.avatars.stage .avatar-btn.flare { transform: scale(1.05); box-shadow: 0 0 34px rgba(255, 236, 190, 0.6), var(--shadow); }
+.avatars.stage .avatar-btn.flare::before { opacity: 1; }
+
+/* จุด PIN เป็นโน้ต */
+.pin-dots .dot { display: grid; place-items: center; transition: transform 0.15s ease; }
+.pin-dots .dot.on { width: 22px; height: 22px; margin: -3px; transform: translateY(-3px); }
+.pin-dots .dot.on::after { content: '♪'; color: #04202a; font-size: 14px; font-weight: 900; line-height: 1; }
+/* PIN ผิด — แป้นส่ายหัว */
+.pinpad.shake { animation: shake 0.4s ease; }
+@keyframes shake {
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* ---------- เครื่องที่ตั้ง "ลดการเคลื่อนไหว" — ปิดของที่ขยับตลอดเวลาทั้งหมด ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after, .topbar h1, .tile::before, .hero-disc, .bar > i::after,
+  .bottomnav button.active .slot, .boss-card .face, .busydot.on,
+  .app-body .card, .app-body .stat, .tiles .tile, .curtain-intro i, .pinpad.shake {
+    animation: none !important;
+  }
+  .curtain-intro { display: none; }
+}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call, callBatch, fileToDataUrl } from '../api.js';
 import { useToast, Empty, Modal, StatusChip, HudNav, AppBody, useLoad, fmtDate, Avatar, BusyDot } from '../components.jsx';
-import { confetti, floatText, play, checkLevelUp, soundOn, toggleSound } from '../fx.js';
+import { floatText, play, checkLevelUp, checkConcert, checkRecords, spotlightFlash, reducedMotion, soundOn, toggleSound } from '../fx.js';
 
 const TABS = [
   { key: 'home', label: 'หน้าหลัก', ic: '🎸' },
@@ -53,12 +53,59 @@ function SoundToggle() {
 // แต้มสะสมทั้งหมดของเด็กหนึ่งคน — ถอยไปใช้แต้มคงเหลือถ้า payload เก่ายังค้างตอน deploy คาบเกี่ยว
 const totalOf = (c) => (c.xp != null ? c.xp : c.points);
 
+// ตัวเลขวิ่งขึ้นจากค่าเดิมไปค่าใหม่ (ครั้งแรกวิ่งจาก 0) — ตั้งลดการเคลื่อนไหวไว้ก็โชว์ค่าจริงเลย
+function CountUp({ value }) {
+  const target = Number(value) || 0;
+  const [shown, setShown] = useState(() => (reducedMotion() ? target : 0));
+  const fromRef = React.useRef(shown);
+  useEffect(() => {
+    if (reducedMotion()) { setShown(target); return undefined; }
+    const from = fromRef.current;
+    const t0 = performance.now();
+    let raf;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 800);
+      const v = Math.round(from + (target - from) * (1 - Math.pow(1 - k, 3)));  // ease-out
+      fromRef.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return shown;
+}
+
 // ชาร์ตเพลงฮิต (กระดานผู้นำ) — สัปดาห์นี้กับสะสมใช้หน้าตาเดียวกัน ต่างแค่ลำดับกับเลขที่โชว์
-function LeaderCard({ title, rows, score, note }) {
+// podium: 3 อันดับแรกขึ้นแท่นรับรางวัล (2-1-3) ที่เหลือเป็นรายการ
+function LeaderCard({ title, rows, score, note, podium = false }) {
+  const top = podium ? rows.slice(0, 3) : [];
+  const rest = podium ? rows.slice(3) : rows;
+  const order = [1, 0, 2].filter((i) => top[i]);
   return (
     <div className="card">
       <h2>{title}</h2>
-      {rows.map((c, i) => (
+      {podium && (
+        <div className="podium">
+          {order.map((i) => {
+            const c = top[i];
+            return (
+              <div key={c.id} className={'pod p' + (i + 1)}>
+                <div className="pod-av">
+                  {i === 0 && <span className="crown">👑</span>}
+                  <Avatar c={c} size={i === 0 ? 64 : 48} />
+                </div>
+                <div className="pod-name" style={{ color: c.color }}>{c.name}</div>
+                <div className="pod-pts">{score(c)}</div>
+                <div className="pod-block">{i + 1}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {rest.map((c, j) => {
+        const i = j + top.length;
+        return (
         <div key={c.id} className={'rank' + (i === 0 ? ' top' : '')}>
           <div className="pos">{['🥇', '🥈', '🥉'][i] || (i + 1)}</div>
           <Avatar c={c} size={40} />
@@ -68,7 +115,8 @@ function LeaderCard({ title, rows, score, note }) {
           </div>
           <div className="pts">{score(c)}</div>
         </div>
-      ))}
+        );
+      })}
       <p className="muted" style={{ marginBottom: 0 }}>{note}</p>
     </div>
   );
@@ -78,7 +126,10 @@ function Home() {
   const toast = useToast();
   const { data, load, view } = useLoad(useCallback(
     () => callBatch([['child.state'], ['child.leaderboard']]).then(([x, board]) => {
-      checkLevelUp(x.id, x.level && x.level.level, x.level && x.level.title); // ขึ้นเลเวล = ฉลองเต็มจอ
+      // ฉลองเต็มจอสิ่งที่เกิดขึ้นตั้งแต่เปิดแอปครั้งก่อน (หลายอย่างพร้อมกันจะต่อคิวกันเล่น)
+      checkLevelUp(x.id, x.level && x.level.level, x.level && x.level.title);
+      checkConcert(x.id, x.boss);
+      checkRecords(x.id, x.badges);
       return { st: x, board: board || [] };
     }), []), 'child.home');
   if (view) return view;
@@ -99,22 +150,24 @@ function Home() {
 
   return (
     <div>
-      <div className="card">
-        <div className="levelbar">
-          <div className="me"><Avatar c={st} size={58} /><div className="lv"><small>LV</small><b>{lv.level}</b></div></div>
-          <div className="grow">
-            <div className="bar-label"><span>{st.name} · {lv.titleIcon} {lv.title}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
-            <div className="bar"><i style={{ width: lvPct + '%' }} /></div>
-            <div className="muted" style={{ marginTop: 4 }}>อีก {lv.xpToNext} แต้ม → เลเวล {lv.level + 1}</div>
-          </div>
+      {/* โปสเตอร์ศิลปิน — วงแหวนรอบรูป = ความคืบหน้าเลเวลนี้ มีแผ่นเสียงหมุนอยู่ข้างหลัง */}
+      <div className="card hero">
+        <div className="hero-ring" style={{ '--p': lvPct }}>
+          <div className="hero-disc" />
+          <Avatar c={st} size={96} />
+          <div className="hero-lv"><small>LV</small><b>{lv.level}</b></div>
         </div>
+        <div className="hero-name">{st.name}</div>
+        <div className="hero-title">{lv.titleIcon} {lv.title}</div>
+        <div className="bar-label mt"><span>อีก {lv.xpToNext} แต้ม → เลเวล {lv.level + 1}</span><span>{lv.xpInLevel}/{lv.xpForLevel} XP</span></div>
+        <div className="bar"><i style={{ width: lvPct + '%' }} /></div>
       </div>
 
       <div className="stats">
-        <div className="stat"><div className="num">{st.points}</div><div className="lbl">◆ แต้มที่มี</div></div>
-        <div className="stat"><div className="num">{lv.xp}</div><div className="lbl">★ สะสมทั้งหมด</div></div>
-        <div className="stat"><div className="num">🔥{st.streakCurrent}</div><div className="lbl">ทำต่อเนื่อง (วัน)</div></div>
-        <div className="stat"><div className="num">{st.streakMax}</div><div className="lbl">สถิติสูงสุด</div></div>
+        <div className="stat"><div className="num"><CountUp value={st.points} /></div><div className="lbl">◆ แต้มที่มี</div></div>
+        <div className="stat"><div className="num"><CountUp value={lv.xp} /></div><div className="lbl">★ สะสมทั้งหมด</div></div>
+        <div className="stat"><div className="num">🔥<CountUp value={st.streakCurrent} /></div><div className="lbl">ทำต่อเนื่อง (วัน)</div></div>
+        <div className="stat"><div className="num"><CountUp value={st.streakMax} /></div><div className="lbl">สถิติสูงสุด</div></div>
       </div>
 
       <div className="card">
@@ -163,6 +216,7 @@ function Home() {
         <>
           <LeaderCard
             title="📻 ชาร์ตเพลงฮิตสัปดาห์นี้"
+            podium
             rows={board}
             score={(c) => c.weekPoints}
             note="นับแต้มที่ทำได้ตั้งแต่วันจันทร์"
@@ -253,7 +307,7 @@ function Chores({ session }) {
           </div>
         )}
       </div>
-      {sel && <SubmitModal chore={sel} session={session} onClose={() => setSel(null)} onDone={() => { setSel(null); load(); confetti(70, 1.3); play('success'); floatText('ส่งงานแล้ว!'); toast('ส่งงานแล้ว รอผู้ปกครองตรวจ ✅'); }} />}
+      {sel && <SubmitModal chore={sel} session={session} onClose={() => setSel(null)} onDone={() => { setSel(null); load(); spotlightFlash(); play('success'); floatText('ส่งงานแล้ว!'); toast('ส่งงานแล้ว รอผู้ปกครองตรวจ ✅'); }} />}
     </div>
   );
 }
