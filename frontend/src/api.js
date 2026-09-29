@@ -111,11 +111,47 @@ if (typeof window !== 'undefined' && window.__BOOT__ && window.__BOOT__.then) {
 // ต้องยาวกว่า cold start ที่ช้าสุด (วัดได้ถึง ~35 วิ) — เดิม 25 วิ ตัดทิ้งก่อน server ตอบทัน
 const TIMEOUT_MS = 45000;
 
-// ยิงจริงหนึ่งคำขอ -> คืน data (โยน error ถ้า ok:false)
+/**
+ * ลองใหม่อัตโนมัติหนึ่งครั้ง — เฉพาะคำขอที่อ่านอย่างเดียว
+ *
+ * Apps Script บางรอบค้างเกินนาที หรือตอบหน้า 404 ของ Google แทน JSON ทั้งที่โค้ดเราไม่ได้ผิด
+ * (2026-09-29 วัด 7 รอบ ห่างกัน 3 นาที: ปกติ 2–6 วิ แต่ 2 รอบได้ 404 หลัง 35–46 วิ และ ping รอบหนึ่ง 81 วิ)
+ * คำขอใหม่มักได้เครื่องที่ตื่นอยู่ จึงตัดรอบแรกเร็วกว่าเพดานปกติแล้วยิงซ้ำ
+ *
+ * ⚠️ ห้ามใส่ action ที่เขียนข้อมูล — child.redeem หักแต้มทุกครั้งที่ถูกเรียกและไม่มีตัวกันซ้ำฝั่ง server
+ *    รอบแรกที่เราตัดทิ้งอาจรันจบไปแล้วจริงๆ แค่เราไม่ได้รอคำตอบ
+ */
+const FIRST_TRY_MS = 20000;
+const READ_ACTIONS = new Set([
+  'boot', 'auth.me', 'auth.childList',
+  'child.counts', 'child.state', 'child.leaderboard', 'child.chores', 'child.rewards',
+  'child.redemptions', 'child.submissions',
+  'parent.counts', 'parent.reviewQueue', 'parent.reviewHistory', 'parent.redemptionQueue',
+  'parent.wishes', 'parent.adjustments', 'parent.report', 'parent.config.get',
+  'parent.children.list', 'parent.chores.list', 'parent.rewards.list', 'parent.timewindows.list',
+  'parent.classes.list', 'parent.classes.sessions',
+]);
+function isRead(action, params) {
+  if (action === 'batch') return params.calls.every((c) => READ_ACTIONS.has(c.action));
+  return READ_ACTIONS.has(action);
+}
+
+// ยิงจริง -> คืน data (โยน error ถ้า ok:false)
 async function post(action, params) {
   if (!API_URL) throw new Error('ยังไม่ได้ตั้งค่า VITE_API_URL');
+  if (!isRead(action, params)) return attempt(action, params, TIMEOUT_MS);
+  try {
+    return await attempt(action, params, FIRST_TRY_MS);
+  } catch (e) {
+    if (!e.transient) throw e; // server ตอบ ok:false มาจริง — ยิงซ้ำก็ได้คำตอบเดิม
+    return attempt(action, params, TIMEOUT_MS);
+  }
+}
+
+// ยิงหนึ่งครั้ง — error ที่มาจากเน็ต/ค้าง/หน้า error ของ Google ติดธง transient (ลองใหม่ได้)
+async function attempt(action, params, timeoutMs) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let json;
   setInflight(1);
   try {
@@ -125,10 +161,13 @@ async function post(action, params) {
       body: JSON.stringify({ action, token: getToken(), params }),
       signal: ctrl.signal,
     });
-    json = await res.json();
+    json = await res.json(); // หน้า 404 ของ Google เป็น HTML — พังตรงนี้แล้วไปเข้า catch
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('เชื่อมต่อนานเกินไป — ลองใหม่อีกครั้ง');
-    throw new Error('เชื่อมต่อไม่ได้ — เช็กอินเทอร์เน็ตแล้วลองใหม่');
+    const err = new Error(e.name === 'AbortError'
+      ? 'เชื่อมต่อนานเกินไป — ลองใหม่อีกครั้ง'
+      : 'เชื่อมต่อไม่ได้ — เช็กอินเทอร์เน็ตแล้วลองใหม่');
+    err.transient = true;
+    throw err;
   } finally {
     clearTimeout(timer);
     setInflight(-1);
