@@ -395,6 +395,7 @@ function Status() {
 
 function Shop() {
   const toast = useToast();
+  const [redeeming, setRedeeming] = useState(null);   // id ของรางวัลที่กำลังส่งคำขอแลก
   // สามชุดนี้ต้องใช้พร้อมกัน — ส่งไปรอบเดียว
   const { data, load, view } = useLoad(useCallback(
     () => callBatch([['child.rewards'], ['child.redemptions'], ['child.state']])
@@ -403,14 +404,22 @@ function Shop() {
   if (view) return view;
   const { rewards, reds, points, xp } = data;
 
+  // ระหว่างรอ server ล็อกปุ่มแลกทุกปุ่ม — server ช้าได้ถึงครึ่งนาที ถ้าไม่ล็อก เด็กกดซ้ำแล้วได้คำขอแลกซ้อน
+  // (ฝั่ง server หักแต้มทุกครั้งที่เรียก ไม่มีตัวกันซ้ำ)
   async function redeem(r) {
     if (points < r.cost) return toast('แต้มยังไม่พอ', 'err');
+    if (redeeming) return;
+    setRedeeming(r.id); play('tap');
     try {
       await call('child.redeem', { rewardId: r.id });
       giftPop(); play('coin'); floatText(`-${r.cost} ◆`, { className: 'cool' });
       toast('ขอแลกแล้ว รอผู้ปกครองอนุมัติ 🎁');
-      load();
-    } catch (e) { toast(e.message, 'err'); }
+    } catch (e) {
+      // หมดเวลารอไม่ได้แปลว่าไม่สำเร็จ — server อาจทำเสร็จไปแล้ว โหลดใหม่ให้เห็นคำขอจริงก่อนกดอีกรอบ
+      toast(e.message, 'err');
+    }
+    setRedeeming(null);
+    load();
   }
 
   return (
@@ -425,7 +434,9 @@ function Shop() {
         {rewards.length === 0 ? <Empty /> : rewards.map((r) => (
           <div key={r.id} className="item">
             <div className="grow"><div className="title">{r.name}</div><div className="sub">{r.cost} แต้ม</div></div>
-            <button className="btn sm" disabled={points < r.cost} onClick={() => redeem(r)}>แลก</button>
+            <button className="btn sm" disabled={points < r.cost || !!redeeming} onClick={() => redeem(r)}>
+              {redeeming === r.id ? '⏳ กำลังแลก…' : 'แลก'}
+            </button>
           </div>
         ))}
       </div>

@@ -181,8 +181,10 @@ function ReviewModal({ sub, onClose, onDone }) {
         ))}
       </div>
       <PointsBreakdown calc={sub.calc} quality={quality} />
+      {/* server ช้าได้ถึงครึ่งนาที — บอกให้รู้ว่ากำลังทำอยู่ ไม่ใช่ค้าง */}
+      {busy && <div className="unsaved">⏳ กำลังบันทึก… บางครั้ง server ช้าถึงครึ่งนาที ไม่ต้องกดซ้ำนะ</div>}
       <button className="btn ok mt" onClick={approve} disabled={busy}>
-        {finalPoints === null
+        {busy ? '⏳ กำลังบันทึก…' : finalPoints === null
           ? `อนุมัติ (ให้ ${quality}%)`
           : `อนุมัติ — ให้ ${finalPoints} แต้ม${sub.calc.teamSize > 1 ? '/คน' : ''}`}
       </button>
