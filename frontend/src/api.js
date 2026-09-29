@@ -108,7 +108,8 @@ if (typeof window !== 'undefined' && window.__BOOT__ && window.__BOOT__.then) {
 }
 
 // กันหน้าจอหมุนค้างตลอดกาลตอนเน็ตสะดุด/Apps Script ค้าง
-const TIMEOUT_MS = 25000;
+// ต้องยาวกว่า cold start ที่ช้าสุด (วัดได้ถึง ~35 วิ) — เดิม 25 วิ ตัดทิ้งก่อน server ตอบทัน
+const TIMEOUT_MS = 45000;
 
 // ยิงจริงหนึ่งคำขอ -> คืน data (โยน error ถ้า ok:false)
 async function post(action, params) {
