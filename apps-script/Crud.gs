@@ -313,15 +313,15 @@ function validateConfig_(p) {
   if (has('latePercent')) out.latePercent = intInRange_(p.latePercent, 1, 100, '% เมื่อส่งสาย');
   if (has('teamPercent')) out.teamPercent = intInRange_(p.teamPercent, 1, 100, '% ส่วนแบ่งของทีม');
   if (has('streakBonusTiers')) out.streakBonusTiers = tiersString_(p.streakBonusTiers);
-  if (has('streakShieldCost')) out.streakShieldCost = intInRange_(p.streakShieldCost, 0, 100000, 'ราคาโล่');
-  if (has('streakShieldMax')) out.streakShieldMax = intInRange_(p.streakShieldMax, 0, 20, 'จำนวนโล่สูงสุด');
-  if (has('dailyQuestTarget')) out.dailyQuestTarget = intInRange_(p.dailyQuestTarget, 1, 50, 'ภารกิจวัน: จำนวนงาน');
-  if (has('dailyQuestBonus')) out.dailyQuestBonus = intInRange_(p.dailyQuestBonus, 0, 100000, 'ภารกิจวัน: โบนัส');
+  if (has('streakShieldCost')) out.streakShieldCost = intInRange_(p.streakShieldCost, 0, 100000, 'ราคาตั๋วสำรอง');
+  if (has('streakShieldMax')) out.streakShieldMax = intInRange_(p.streakShieldMax, 0, 20, 'จำนวนตั๋วสำรองสูงสุด');
+  if (has('dailyQuestTarget')) out.dailyQuestTarget = intInRange_(p.dailyQuestTarget, 1, 50, 'เซ็ตลิสต์วัน: จำนวนงาน');
+  if (has('dailyQuestBonus')) out.dailyQuestBonus = intInRange_(p.dailyQuestBonus, 0, 100000, 'เซ็ตลิสต์วัน: โบนัส');
   if (has('xpPerLevel')) out.xpPerLevel = intInRange_(p.xpPerLevel, 1, 100000, 'XP ต่อ 1 เลเวล');
 
   BOSS_SLOTS.forEach(function (i) {
     const pre = 'boss' + i;
-    const label = 'บอสตัวที่ ' + i;
+    const label = 'เวทีที่ ' + i;
     if (has(pre + 'Name')) out[pre + 'Name'] = textField_(p[pre + 'Name'], 40, label + ': ชื่อ');
     if (has(pre + 'Emoji')) out[pre + 'Emoji'] = textField_(p[pre + 'Emoji'], 8, label + ': อีโมจิ');
     if (has(pre + 'Target')) out[pre + 'Target'] = intInRange_(p[pre + 'Target'], 1, 1000000, label + ': เลือด');

@@ -203,7 +203,7 @@ const CHILD_ACTIONS = {
       const child = findById_(TAB.Children, s.refId);
       if (!child) throw new Error('ไม่พบเด็ก');
       const have = Number(child.shields) || 0;
-      if (have >= max) throw new Error('มีโล่ครบสูงสุดแล้ว (' + max + ' อัน)');
+      if (have >= max) throw new Error('มีตั๋วสำรองครบสูงสุดแล้ว (' + max + ' ใบ)');
       addPoints_(s.refId, -cost, true); // แต้มไม่พอจะโยน error เอง
       update_(TAB.Children, s.refId, { shields: have + 1 });
       return { shields: have + 1, points: Number(findById_(TAB.Children, s.refId).points) || 0 };
