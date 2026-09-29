@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { call, callBatch, fileToAvatarDataUrl } from '../api.js';
 import { useToast, Empty, Modal, EmojiPicker, TimeSelect, ZodiacPicker, useLoad, scrollBodyTop, CHORE_ICONS, Avatar } from '../components.jsx';
+import { stageShow } from '../fx.js';
 
 // 'YYYY-MM-DD' -> 'DD/MM/YYYY' — จัดรูปแบบตรงจากสตริง ไม่ผ่าน Date object กันเขตเวลาเลื่อนวัน
 function dmy_(dateStr) {
@@ -167,6 +168,17 @@ function GameConfig() {
       <button className="btn mt" onClick={save} disabled={busy || !dirty}>
         {busy ? 'กำลังบันทึก…' : dirty ? 'บันทึกกติกา' : 'บันทึกแล้ว ✓'}
       </button>
+
+      {/* ดูฉากฉลองแบบที่ลูกๆ เห็น โดยไม่ต้องรอให้เกิดจริง — ไม่ยิง server */}
+      <div className="card mt">
+        <h2>🎆 ทดสอบฉากฉลอง</h2>
+        <p className="muted">กดดูว่าตอนลูกเลเวลอัป ปิดโชว์ หรือได้แผ่นเสียงทองคำ จะเห็นอะไร</p>
+        <div className="row">
+          <button className="btn sm" onClick={() => stageShow({ kicker: '🎶 LEVEL UP! 🎶', big: 8, sub: '🥁 วงโรงเรียน' })}>เลเวลอัป</button>
+          <button className="btn sm" onClick={() => stageShow({ kicker: '🏟️ ปิดโชว์สำเร็จ!', big: '🎪', sub: 'เวทีงานวัด · ทุกคน +30 แต้ม', sound: 'boss' })}>ปิดโชว์</button>
+          <button className="btn sm" onClick={() => stageShow({ kicker: '💿 แผ่นเสียงทองคำ!', big: '7 วัน', sub: 'ทำต่อเนื่องครบแล้ว สุดยอด!', record: true })}>แผ่นเสียง</button>
+        </div>
+      </div>
     </div>
   );
 }

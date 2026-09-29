@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { call } from '../api.js';
 import { useToast, Empty, Modal, Photo, StatusChip, HudNav, AppBody, useLoad, fmtDate, Avatar, BusyDot } from '../components.jsx';
-import { confetti, play } from '../fx.js';
+import { confetti, play, stageShow } from '../fx.js';
 import ParentSettings from './ParentSettings.jsx';
 
 const TABS = [
@@ -152,7 +152,7 @@ function ReviewModal({ sub, onClose, onDone }) {
       if (nb.length) msg += ` · ได้แผ่นเสียงทองคำใหม่ 💿`;
       const won = r.bossWinners || [];
       if (won.length) {
-        confetti(140, 2.2); play('boss');
+        stageShow({ kicker: '🏟️ ปิดโชว์สำเร็จ!', big: won[0].bossEmoji || '🎤', sub: `${won[0].bossName || 'คอนเสิร์ต'} · ทุกคน +${won[0].points} แต้ม`, sound: 'boss' });
         msg += ` · 🏟️ ปิดโชว์${won[0].bossEmoji || ''}${won[0].bossName || 'คอนเสิร์ต'}สำเร็จ! ทุกคนได้ +${won[0].points}`;
       } else {
         confetti(60, 1.2); play('success');

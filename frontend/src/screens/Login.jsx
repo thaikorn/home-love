@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { call } from '../api.js';
 import { useToast, Loading, Avatar } from '../components.jsx';
+import { play } from '../fx.js';
+
+// ม่านเปิดตอนเข้าแอปครั้งแรกของรอบนี้เท่านั้น — กลับมาหน้านี้อีก (ออกจากระบบ) ไม่ต้องเล่นซ้ำ
+let introPlayed = false;
 
 export default function Login({ onLogin }) {
   const [mode, setMode] = useState('child'); // 'child' | 'parent'
+  const [intro] = useState(() => !introPlayed);
+  useEffect(() => { introPlayed = true; }, []);
   return (
     <div className="app">
+      {intro && <div className="curtain-intro" aria-hidden="true"><i /><i /></div>}
       <div className="topbar"><h1>🎸 HOME LOVE BAND</h1><div className="sub">วงดนตรีงานบ้าน</div></div>
       <div className="app-body">
         {mode === 'child'
@@ -22,6 +29,8 @@ function ChildLogin({ onLogin, toParent }) {
   const [picked, setPicked] = useState(null);
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
+  const [flare, setFlare] = useState(null);   // สมาชิกที่เพิ่งแตะ — ไฟส่องสว่างวาบก่อนไปหน้า PIN
+  const [shake, setShake] = useState(false);
 
   useEffect(() => {
     call('auth.childList').then(setChildren).catch((e) => { toast(e.message, 'err'); setChildren([]); });
@@ -31,8 +40,11 @@ function ChildLogin({ onLogin, toParent }) {
     setBusy(true);
     try {
       const res = await call('auth.loginChild', { childId: picked.id, pin: fullPin });
+      play('success');
       onLogin(res);
     } catch (e) {
+      play('error');
+      setShake(true); setTimeout(() => setShake(false), 450);
       toast(e.message, 'err');
       setPin('');
     }
@@ -46,6 +58,12 @@ function ChildLogin({ onLogin, toParent }) {
     if (next.length === 4) trySubmit(next);
   }
 
+  function pick(c) {
+    if (flare) return;
+    setFlare(c.id); play('drum');
+    setTimeout(() => { setPicked(c); setFlare(null); }, 380);
+  }
+
   if (children === null) return <Loading />;
 
   if (!picked) {
@@ -56,9 +74,9 @@ function ChildLogin({ onLogin, toParent }) {
           {children.length === 0
             ? <p className="muted">ยังไม่มีเด็กในระบบ — ให้ผู้ปกครองเพิ่มก่อน</p>
             : (
-              <div className="avatars">
+              <div className="avatars stage">
                 {children.map((c) => (
-                  <button key={c.id} className="avatar-btn" style={{ borderColor: c.color }} onClick={() => setPicked(c)}>
+                  <button key={c.id} className={'avatar-btn' + (flare === c.id ? ' flare' : '')} style={{ borderColor: c.color }} onClick={() => pick(c)}>
                     <Avatar c={c} size={84} />
                     <div className="nm">{c.name}</div>
                   </button>
@@ -79,7 +97,7 @@ function ChildLogin({ onLogin, toParent }) {
         <div className="pin-dots">
           {[0, 1, 2, 3].map((i) => <div key={i} className={'dot' + (i < pin.length ? ' on' : '')} />)}
         </div>
-        <div className="pinpad">
+        <div className={'pinpad' + (shake ? ' shake' : '')}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <button key={n} onClick={() => press(String(n))}>{n}</button>)}
           <button onClick={() => setPin('')}>ล้าง</button>
           <button onClick={() => press('0')}>0</button>
