@@ -301,7 +301,14 @@ function seedDemo() {
  * keepWarm() — ปลุก Apps Script กับ Sheet ไว้ไม่ให้เย็น (request แรกหลังว่างนานๆ ช้าได้ถึง 15–35 วินาที)
  * ไม่มีโค้ดสร้าง trigger ให้เอง เพราะจะต้องขอสิทธิ์ใหม่ (script.scriptapp) แล้วแอปจะใช้ไม่ได้จนกว่าจะอนุญาต
  * ตั้งเองครั้งเดียวใน editor: Triggers (รูปนาฬิกา) → Add trigger → keepWarm → Time-driven → ทุก 5 นาที
+ *
+ * ต้องยิงผ่าน URL ของ web app จริง ไม่ใช่เรียกฟังก์ชันตรงๆ — trigger รันคนละที่กับเครื่องที่ตอบ
+ * คำขอจากมือถือ (2026-09-29 วัดได้: trigger รันไม่มี error แต่ ping ยังเย็น 11–31 วินาที)
+ * ใช้ action=children เพราะแตะ Sheet ด้วย ไม่ใช่แค่ปลุกสคริปต์
+ * UrlFetchApp ต้องใช้สิทธิ์ script.external_request — กด Run keepWarm ใน editor หนึ่งครั้งเพื่ออนุญาต
  */
+const KEEPWARM_URL_ = 'https://script.google.com/macros/s/AKfycbyAojwYlNn2LNcL__ODWwJ6U-N9PT4LvyblYk2DzdYK3Ln6PBlEoQ4ROqeYA8VVnYBHQg/exec';
 function keepWarm() {
-  publicChildren_();
+  const res = UrlFetchApp.fetch(KEEPWARM_URL_ + '?action=children', { muteHttpExceptions: true, followRedirects: true });
+  Logger.log('keepWarm → ' + res.getResponseCode());
 }
